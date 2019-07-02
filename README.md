@@ -54,3 +54,14 @@ async with create_engine(**connection_params) as engine:
         transaction = await repo.first(transactions_table.c.id == 1)
 
 ```
+
+
+## Tests 
+
+To run tests:
+
+1. Setup [database url](https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls) via `DATABASE_URL` environment variable  
+
+**WARNING:** Every test run will drop all tables from db
+
+2. Run tests via `pytest`
