@@ -2,6 +2,21 @@
 
 Python repository pattern implementation
 
+## Installation
+
+Via pip:
+
+```
+pip install repka
+```
+
+Via poetry:
+
+```
+poetry add repka
+```
+
+
 ## Usage
 
 ```python
