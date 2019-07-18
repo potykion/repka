@@ -1,7 +1,7 @@
 import json
 from abc import abstractmethod
-from functools import reduce
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Type
+from functools import reduce, partial
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Type, Callable
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
@@ -28,16 +28,13 @@ class BaseRepository(Generic[T]):
         pass
 
     @property
+    def serializer(self) -> Callable[[T], Dict]:
+        return cast(Callable[[T], Dict], partial(model_to_primitive, without_id=True))
+
+    @property
     @abstractmethod
-    def entity_type(self) -> Type[IdModel]:
+    def deserializer(self) -> Callable[..., T]:
         pass
-
-    @staticmethod
-    def serializer(entity: T) -> Dict:
-        return model_to_primitive(entity, without_id=True)
-
-    def entity_fabric(self, **kwargs) -> T:
-        return self.entity_type(**kwargs)
 
     async def insert(self, entity: T) -> T:
         query = (
@@ -82,7 +79,7 @@ class BaseRepository(Generic[T]):
         rows: ResultProxy = await self.connection.execute(query)
         row = await rows.first()
         if row:
-            return cast(T, self.entity_type(**row))
+            return cast(T, self.deserializer(**row))
 
         return None
 
@@ -99,7 +96,7 @@ class BaseRepository(Generic[T]):
         query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
 
         rows = await self.connection.execute(query)
-        return [cast(T, self.entity_type(**row)) for row in rows]
+        return [cast(T, self.deserializer(**row)) for row in rows]
 
     async def delete(self, *filters: BinaryExpression) -> None:
         query = self.table.delete()

@@ -39,7 +39,7 @@ transactions_table = sa.Table(
 
 
 class TransactionRepo(BaseRepository[Transaction]):
-    entity_type = Transaction
+    deserializer = Transaction
     table = transactions_table
 
     async def sum(self) -> int:
