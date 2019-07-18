@@ -71,13 +71,15 @@ async def transactions(repo: TransactionRepo) -> List[Transaction]:
     transactions_ = [
         Transaction(price=100, date=dt.date(2019, 1, 3)),
         Transaction(price=200),
-        Transaction(price=100, date=dt.date(2019, 1, 1))
+        Transaction(price=100, date=dt.date(2019, 1, 1)),
     ]
     transactions_ = await repo.insert_many(transactions_)
     return transactions_
 
 
-async def test_base_repository_insert_sets_id_and_inserts_to_db(repo: TransactionRepo) -> None:
+async def test_base_repository_insert_sets_id_and_inserts_to_db(
+    repo: TransactionRepo
+) -> None:
     trans = Transaction(price=100)
 
     trans = await repo.insert(trans)
@@ -110,41 +112,50 @@ async def test_base_repo_update_updates_row_in_db(repo: TransactionRepo) -> None
     assert updated_trans.date == trans.date
 
 
-async def test_base_repo_first_return_first_matching_row(repo: TransactionRepo,
-                                                         transactions: List[Transaction]) -> None:
+async def test_base_repo_first_return_first_matching_row(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
     trans = await repo.first(transactions_table.c.price == 100)
 
     assert trans.id == transactions[0].id
 
 
-async def test_base_repo_get_all_return_all_rows_filtered_and_sorted(repo: TransactionRepo,
-                                                                     transactions: List[Transaction]) -> None:
+async def test_base_repo_get_all_return_all_rows_filtered_and_sorted(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
     db_transactions = await repo.get_all(
-        filters=[transactions_table.c.price == 100],
-        orders=[transactions_table.c.date]
+        filters=[transactions_table.c.price == 100], orders=[transactions_table.c.date]
     )
     assert db_transactions == [transactions[2], transactions[0]]
 
 
-async def test_base_repo_delete_deletes_row_from_db(repo: TransactionRepo, transactions: List[Transaction]) -> None:
+async def test_base_repo_delete_deletes_row_from_db(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
     await repo.delete(transactions_table.c.price == 100)
 
     db_transactions = await repo.get_all()
     assert len(db_transactions) == 1
 
 
-async def test_transaction_repo_custom_method_works(repo: TransactionRepo, transactions: List[Transaction]) -> None:
+async def test_transaction_repo_custom_method_works(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
     sum_ = await repo.sum()
 
     assert sum_ == sum(map(operator.attrgetter("price"), transactions))
 
 
-async def test_base_repo_get_by_id_returns_row_with_id(repo: TransactionRepo, transactions: List[Transaction]) -> None:
+async def test_base_repo_get_by_id_returns_row_with_id(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
     db_trans = await repo.get_by_id(transactions[0].id)
     assert db_trans == transactions[0]
 
 
-async def test_base_repo_get_or_create_creates_entity_if_no_entities(repo: TransactionRepo) -> None:
+async def test_base_repo_get_or_create_creates_entity_if_no_entities(
+    repo: TransactionRepo
+) -> None:
     price = 400
     trans, created = await repo.get_or_create(defaults={"price": price})
     assert created
@@ -152,13 +163,12 @@ async def test_base_repo_get_or_create_creates_entity_if_no_entities(repo: Trans
 
 
 async def test_base_repo_get_or_create_returns_entity_if_match(
-        repo: TransactionRepo,
-        transactions: List[Transaction]
+    repo: TransactionRepo, transactions: List[Transaction]
 ) -> None:
     price = 400
     trans, created = await repo.get_or_create(
         filters=[transactions_table.c.id == transactions[0].id],
-        defaults={"price": price}
+        defaults={"price": price},
     )
     assert not created
     assert trans == transactions[0]
