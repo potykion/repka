@@ -46,6 +46,7 @@ class BaseRepository(Generic[T]):
     @property
     @abstractmethod
     def deserializer(self) -> Callable[..., T]:
+        # should return callable that acccepts kwargs and return entity (e.g. entity constructor)
         pass
 
     async def insert(self, entity: T) -> T:

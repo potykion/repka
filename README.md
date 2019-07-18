@@ -41,7 +41,7 @@ class Transaction(IdModel):
 # Define repository
 class TransactionRepo(BaseRepository):
     table = transactions_table
-    entity_type = Transaction
+    deserializer = Transaction
 
 # Create SA connection
 connection_params = dict(user='aiopg', database='aiopg', host='127.0.0.1', password='passwd')
