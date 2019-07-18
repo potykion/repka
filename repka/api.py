@@ -1,7 +1,7 @@
 import json
 from abc import abstractmethod
 from functools import reduce, partial
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Type, Callable
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Callable
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
@@ -9,6 +9,8 @@ from aiopg.sa.transaction import Transaction as SATransaction
 from pydantic import BaseModel
 from sqlalchemy import Table
 from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
+
+Created = bool
 
 
 class IdModel(BaseModel):
@@ -83,10 +85,29 @@ class BaseRepository(Generic[T]):
 
         return None
 
+    async def get_by_id(self, entity_id: int) -> T:
+        return await self.first(self.table.c.id == entity_id)
+
+    async def get_or_create(
+            self,
+            filters: Optional[List[BinaryExpression]] = None,
+            defaults: Optional[Dict] = None
+    ) -> Tuple[T, Created]:
+        filters = filters or []
+        defaults = defaults or {}
+
+        entity = await self.first(*filters)
+        if entity:
+            return entity, False
+
+        entity = self.deserializer(**defaults)
+        entity = await self.insert(entity)
+        return entity, True
+
     async def get_all(
-        self,
-        filters: Optional[List[BinaryExpression]] = None,
-        orders: Optional[List[BinaryExpression]] = None,
+            self,
+            filters: Optional[List[BinaryExpression]] = None,
+            orders: Optional[List[BinaryExpression]] = None,
     ) -> List[T]:
         filters = filters or []
         orders = orders or []
@@ -104,7 +125,7 @@ class BaseRepository(Generic[T]):
         await self.connection.execute(query)
 
     def _apply_filters(
-        self, query: ClauseElement, filters: Sequence[BinaryExpression]
+            self, query: ClauseElement, filters: Sequence[BinaryExpression]
     ) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
 
