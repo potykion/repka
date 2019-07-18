@@ -2,3 +2,5 @@
 dist
 *.egg-info
 .env
+.pytest_cache
+.mypy_cache

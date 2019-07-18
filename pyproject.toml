@@ -1,3 +1,9 @@
+[tool.black]
+# https://github.com/ambv/black
+line-length = 98
+skip-string-normalization = true
+target-version = ['py37']
+
 [tool.poetry]
 name = "repka"
 version = "0.1.0"

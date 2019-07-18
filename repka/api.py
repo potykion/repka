@@ -1,17 +1,7 @@
 import json
 from abc import abstractmethod
 from functools import reduce, partial
-from typing import (
-    TypeVar,
-    Optional,
-    Generic,
-    Dict,
-    Sequence,
-    List,
-    cast,
-    Tuple,
-    Callable,
-)
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Callable
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
@@ -50,11 +40,7 @@ class BaseRepository(Generic[T]):
         pass
 
     async def insert(self, entity: T) -> T:
-        query = (
-            self.table.insert()
-            .values(self.serializer(entity))
-            .returning(self.table.c.id)
-        )
+        query = self.table.insert().values(self.serializer(entity)).returning(self.table.c.id)
         id_ = await self.connection.scalar(query)
         entity.id = id_
 
@@ -100,9 +86,7 @@ class BaseRepository(Generic[T]):
         return await self.first(self.table.c.id == entity_id)
 
     async def get_or_create(
-        self,
-        filters: Optional[List[BinaryExpression]] = None,
-        defaults: Optional[Dict] = None,
+        self, filters: Optional[List[BinaryExpression]] = None, defaults: Optional[Dict] = None
     ) -> Tuple[T, Created]:
         filters = filters or []
         defaults = defaults or {}
@@ -125,9 +109,7 @@ class BaseRepository(Generic[T]):
 
         query = self.table.select()
         query = self._apply_filters(query, filters)
-        query = reduce(
-            lambda query_, order_by: query_.order_by(order_by), orders, query
-        )
+        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
 
         rows = await self.connection.execute(query)
         return [cast(T, self.deserializer(**row)) for row in rows]
