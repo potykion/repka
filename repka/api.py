@@ -1,7 +1,7 @@
 import json
 from abc import abstractmethod
 from functools import reduce
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Type
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Type, Tuple
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
@@ -9,6 +9,8 @@ from aiopg.sa.transaction import Transaction as SATransaction
 from pydantic import BaseModel
 from sqlalchemy import Table
 from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
+
+Created = bool
 
 
 class IdModel(BaseModel):
@@ -35,8 +37,8 @@ class BaseRepository(Generic[T]):
     async def insert(self, entity: T) -> T:
         query = (
             self.table.insert()
-            .values(model_to_primitive(entity, without_id=True))
-            .returning(self.table.c.id)
+                .values(model_to_primitive(entity, without_id=True))
+                .returning(self.table.c.id)
         )
         id_ = await self.connection.scalar(query)
         entity.id = id_
@@ -49,8 +51,8 @@ class BaseRepository(Generic[T]):
 
         query = (
             self.table.insert()
-            .values([model_to_primitive(entity, without_id=True) for entity in entities])
-            .returning(self.table.c.id)
+                .values([model_to_primitive(entity, without_id=True) for entity in entities])
+                .returning(self.table.c.id)
         )
         rows = await self.connection.execute(query)
         for index, row in enumerate(rows):
@@ -62,8 +64,8 @@ class BaseRepository(Generic[T]):
         assert entity.id
         query = (
             self.table.update()
-            .values(model_to_primitive(entity, without_id=True))
-            .where(self.table.c.id == entity.id)
+                .values(model_to_primitive(entity, without_id=True))
+                .where(self.table.c.id == entity.id)
         )
         await self.connection.execute(query)
         return entity
@@ -82,10 +84,26 @@ class BaseRepository(Generic[T]):
     async def get_by_id(self, entity_id: int) -> T:
         return await self.first(self.table.c.id == entity_id)
 
+    async def get_or_create(
+            self,
+            filters: Optional[List[BinaryExpression]] = None,
+            defaults: Optional[Dict] = None
+    ) -> Tuple[T, Created]:
+        filters = filters or []
+        defaults = defaults or {}
+
+        entity = await self.first(*filters)
+        if entity:
+            return entity, False
+
+        entity = self.entity_type(**defaults)
+        entity = await self.insert(entity)
+        return entity, True
+
     async def get_all(
-        self,
-        filters: Optional[List[BinaryExpression]] = None,
-        orders: Optional[List[BinaryExpression]] = None,
+            self,
+            filters: Optional[List[BinaryExpression]] = None,
+            orders: Optional[List[BinaryExpression]] = None,
     ) -> List[T]:
         filters = filters or []
         orders = orders or []
@@ -103,7 +121,7 @@ class BaseRepository(Generic[T]):
         await self.connection.execute(query)
 
     def _apply_filters(
-        self, query: ClauseElement, filters: Sequence[BinaryExpression]
+            self, query: ClauseElement, filters: Sequence[BinaryExpression]
     ) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
 

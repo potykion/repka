@@ -142,3 +142,23 @@ async def test_transaction_repo_custom_method_works(repo: TransactionRepo, trans
 async def test_base_repo_get_by_id_returns_row_with_id(repo: TransactionRepo, transactions: List[Transaction]) -> None:
     db_trans = await repo.get_by_id(transactions[0].id)
     assert db_trans == transactions[0]
+
+
+async def test_base_repo_get_or_create_creates_entity_if_no_entities(repo: TransactionRepo) -> None:
+    price = 400
+    trans, created = await repo.get_or_create(defaults={"price": price})
+    assert created
+    assert trans.price == price
+
+
+async def test_base_repo_get_or_create_returns_entity_if_match(
+        repo: TransactionRepo,
+        transactions: List[Transaction]
+) -> None:
+    price = 400
+    trans, created = await repo.get_or_create(
+        filters=[transactions_table.c.id == transactions[0].id],
+        defaults={"price": price}
+    )
+    assert not created
+    assert trans == transactions[0]
