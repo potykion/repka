@@ -96,7 +96,7 @@ class BaseRepository(Generic[T]):
 
         return None
 
-    async def get_by_id(self, entity_id: int) -> T:
+    async def get_by_id(self, entity_id: int) -> Optional[T]:
         return await self.first(self.table.c.id == entity_id)
 
     async def get_or_create(
