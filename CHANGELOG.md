@@ -1,5 +1,11 @@
 # Changelog
 
+## Unrealesed
+
+### Added
+
+- repka.api.BaseRepository.get_by_id - get entity by id or None
+
 ## 0.1.0 - 2019-07-02
 
 ### Added 

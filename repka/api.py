@@ -79,6 +79,9 @@ class BaseRepository(Generic[T]):
 
         return None
 
+    async def get_by_id(self, entity_id: int) -> T:
+        return await self.first(self.table.c.id == entity_id)
+
     async def get_all(
         self,
         filters: Optional[List[BinaryExpression]] = None,
