@@ -65,3 +65,11 @@ To run tests:
 **WARNING:** Every test run will drop all tables from db
 
 2. Run tests via `pytest`
+
+## Contribution
+
+1. Create fork/branch for new feature/fix/whatever
+
+2. Install pre-commit hooks: `pre-commit install` (for manual pre-commit run use`pre-commit run -a`)
+
+3. When you done create pull request and wait for approval
