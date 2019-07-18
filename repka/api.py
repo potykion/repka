@@ -32,10 +32,17 @@ class BaseRepository(Generic[T]):
     def entity_type(self) -> Type[IdModel]:
         pass
 
+    @staticmethod
+    def serializer(entity: T) -> Dict:
+        return model_to_primitive(entity, without_id=True)
+
+    def entity_fabric(self, **kwargs) -> T:
+        return self.entity_type(**kwargs)
+
     async def insert(self, entity: T) -> T:
         query = (
             self.table.insert()
-            .values(model_to_primitive(entity, without_id=True))
+            .values(self.serializer(entity))
             .returning(self.table.c.id)
         )
         id_ = await self.connection.scalar(query)
@@ -49,7 +56,7 @@ class BaseRepository(Generic[T]):
 
         query = (
             self.table.insert()
-            .values([model_to_primitive(entity, without_id=True) for entity in entities])
+            .values([self.serializer(entity) for entity in entities])
             .returning(self.table.c.id)
         )
         rows = await self.connection.execute(query)
@@ -62,7 +69,7 @@ class BaseRepository(Generic[T]):
         assert entity.id
         query = (
             self.table.update()
-            .values(model_to_primitive(entity, without_id=True))
+            .values(self.serializer(entity))
             .where(self.table.c.id == entity.id)
         )
         await self.connection.execute(query)
