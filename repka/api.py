@@ -1,7 +1,17 @@
 import json
 from abc import abstractmethod
-from functools import reduce
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Type, Tuple
+from functools import reduce, partial
+from typing import (
+    TypeVar,
+    Optional,
+    Generic,
+    Dict,
+    Sequence,
+    List,
+    cast,
+    Tuple,
+    Callable,
+)
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
@@ -30,15 +40,19 @@ class BaseRepository(Generic[T]):
         pass
 
     @property
+    def serializer(self) -> Callable[[T], Dict]:
+        return cast(Callable[[T], Dict], partial(model_to_primitive, without_id=True))
+
+    @property
     @abstractmethod
-    def entity_type(self) -> Type[IdModel]:
+    def deserializer(self) -> Callable[..., T]:
         pass
 
     async def insert(self, entity: T) -> T:
         query = (
             self.table.insert()
-                .values(model_to_primitive(entity, without_id=True))
-                .returning(self.table.c.id)
+            .values(self.serializer(entity))
+            .returning(self.table.c.id)
         )
         id_ = await self.connection.scalar(query)
         entity.id = id_
@@ -51,8 +65,8 @@ class BaseRepository(Generic[T]):
 
         query = (
             self.table.insert()
-                .values([model_to_primitive(entity, without_id=True) for entity in entities])
-                .returning(self.table.c.id)
+            .values([self.serializer(entity) for entity in entities])
+            .returning(self.table.c.id)
         )
         rows = await self.connection.execute(query)
         for index, row in enumerate(rows):
@@ -64,8 +78,8 @@ class BaseRepository(Generic[T]):
         assert entity.id
         query = (
             self.table.update()
-                .values(model_to_primitive(entity, without_id=True))
-                .where(self.table.c.id == entity.id)
+            .values(self.serializer(entity))
+            .where(self.table.c.id == entity.id)
         )
         await self.connection.execute(query)
         return entity
@@ -77,7 +91,7 @@ class BaseRepository(Generic[T]):
         rows: ResultProxy = await self.connection.execute(query)
         row = await rows.first()
         if row:
-            return cast(T, self.entity_type(**row))
+            return cast(T, self.deserializer(**row))
 
         return None
 
@@ -85,9 +99,9 @@ class BaseRepository(Generic[T]):
         return await self.first(self.table.c.id == entity_id)
 
     async def get_or_create(
-            self,
-            filters: Optional[List[BinaryExpression]] = None,
-            defaults: Optional[Dict] = None
+        self,
+        filters: Optional[List[BinaryExpression]] = None,
+        defaults: Optional[Dict] = None,
     ) -> Tuple[T, Created]:
         filters = filters or []
         defaults = defaults or {}
@@ -96,24 +110,26 @@ class BaseRepository(Generic[T]):
         if entity:
             return entity, False
 
-        entity = self.entity_type(**defaults)
+        entity = self.deserializer(**defaults)
         entity = await self.insert(entity)
         return entity, True
 
     async def get_all(
-            self,
-            filters: Optional[List[BinaryExpression]] = None,
-            orders: Optional[List[BinaryExpression]] = None,
+        self,
+        filters: Optional[List[BinaryExpression]] = None,
+        orders: Optional[List[BinaryExpression]] = None,
     ) -> List[T]:
         filters = filters or []
         orders = orders or []
 
         query = self.table.select()
         query = self._apply_filters(query, filters)
-        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
+        query = reduce(
+            lambda query_, order_by: query_.order_by(order_by), orders, query
+        )
 
         rows = await self.connection.execute(query)
-        return [cast(T, self.entity_type(**row)) for row in rows]
+        return [cast(T, self.deserializer(**row)) for row in rows]
 
     async def delete(self, *filters: BinaryExpression) -> None:
         query = self.table.delete()
@@ -121,7 +137,7 @@ class BaseRepository(Generic[T]):
         await self.connection.execute(query)
 
     def _apply_filters(
-            self, query: ClauseElement, filters: Sequence[BinaryExpression]
+        self, query: ClauseElement, filters: Sequence[BinaryExpression]
     ) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
 
