@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased - 2019-07-27
+
+### Changed
+
+- repka.api.BaseRepository.(de)serializer prop > (de)serialize method
+
+### Added
+
+- repka.api.BaseRepository.get_by_id - get entities by ids
+- repka.api.BaseRepository.delete_by_id(s) - delete entity(ies) by id(s)
+- repka.api.BaseRepository.exists - check entities with filter exists
+
+
 ## 0.2.0 - 2019-07-18
 
 ### Added
