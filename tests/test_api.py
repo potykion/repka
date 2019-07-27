@@ -181,3 +181,20 @@ async def test_get_by_ids_returns_multiple_objects(
 ) -> None:
     actual_transactions = await repo.get_by_ids([trans.id for trans in transactions if trans.id])
     assert actual_transactions == transactions
+
+
+async def test_delete_by_id_deletes_object(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    trans_id = transactions[0].id
+    assert trans_id
+
+    await repo.delete_by_id(trans_id)
+    assert not await repo.get_by_id(trans_id)
+
+
+async def test_delete_by_ids_deletes_multiple_objects(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    await repo.delete_by_ids([trans.id for trans in transactions if trans.id])
+    assert not await repo.get_all()

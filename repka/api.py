@@ -122,6 +122,12 @@ class BaseRepository(Generic[T]):
         query = self._apply_filters(query, filters)
         await self.connection.execute(query)
 
+    async def delete_by_id(self, entity_id: int) -> None:
+        return await self.delete(self.table.c.id == entity_id)
+
+    async def delete_by_ids(self, entity_ids: Sequence[int]) -> None:
+        return await self.delete(self.table.c.id.in_(entity_ids))
+
     def _apply_filters(
         self, query: ClauseElement, filters: Sequence[BinaryExpression]
     ) -> ClauseElement:
