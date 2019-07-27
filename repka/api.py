@@ -1,8 +1,8 @@
 import json
 import sqlalchemy as sa
 from abc import abstractmethod
-from functools import reduce, partial
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Callable
+from functools import reduce
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
@@ -30,18 +30,15 @@ class BaseRepository(Generic[T]):
     def table(self) -> Table:
         pass
 
-    @property
-    def serializer(self) -> Callable[[T], Dict]:
-        return cast(Callable[[T], Dict], partial(model_to_primitive, without_id=True))
+    def serialize(self, entity: T) -> Dict:
+        return model_to_primitive(entity, without_id=True)
 
-    @property
     @abstractmethod
-    def deserializer(self) -> Callable[..., T]:
-        # should return callable that acccepts kwargs and return entity (e.g. entity constructor)
+    def deserialize(self, **kwargs: Any) -> T:
         pass
 
     async def insert(self, entity: T) -> T:
-        query = self.table.insert().values(self.serializer(entity)).returning(self.table.c.id)
+        query = self.table.insert().values(self.serialize(entity)).returning(self.table.c.id)
         id_ = await self.connection.scalar(query)
         entity.id = id_
 
@@ -53,7 +50,7 @@ class BaseRepository(Generic[T]):
 
         query = (
             self.table.insert()
-            .values([self.serializer(entity) for entity in entities])
+            .values([self.serialize(entity) for entity in entities])
             .returning(self.table.c.id)
         )
         rows = await self.connection.execute(query)
@@ -65,9 +62,7 @@ class BaseRepository(Generic[T]):
     async def update(self, entity: T) -> T:
         assert entity.id
         query = (
-            self.table.update()
-            .values(self.serializer(entity))
-            .where(self.table.c.id == entity.id)
+            self.table.update().values(self.serialize(entity)).where(self.table.c.id == entity.id)
         )
         await self.connection.execute(query)
         return entity
@@ -79,7 +74,7 @@ class BaseRepository(Generic[T]):
         rows: ResultProxy = await self.connection.execute(query)
         row = await rows.first()
         if row:
-            return cast(T, self.deserializer(**row))
+            return cast(T, self.deserialize(**row))
 
         return None
 
@@ -99,7 +94,7 @@ class BaseRepository(Generic[T]):
         if entity:
             return entity, False
 
-        entity = self.deserializer(**defaults)
+        entity = self.deserialize(**defaults)
         entity = await self.insert(entity)
         return entity, True
 
@@ -116,7 +111,7 @@ class BaseRepository(Generic[T]):
         query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
 
         rows = await self.connection.execute(query)
-        return [cast(T, self.deserializer(**row)) for row in rows]
+        return [cast(T, self.deserialize(**row)) for row in rows]
 
     async def delete(self, *filters: BinaryExpression) -> None:
         query = self.table.delete()

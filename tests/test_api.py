@@ -1,7 +1,7 @@
 import datetime as dt
 import operator
 import os
-from typing import Optional, List
+from typing import Optional, List, Any
 
 import pytest
 import sqlalchemy as sa
@@ -39,8 +39,10 @@ transactions_table = sa.Table(
 
 
 class TransactionRepo(BaseRepository[Transaction]):
-    deserializer = Transaction
     table = transactions_table
+
+    def deserialize(self, **kwargs: Any) -> Transaction:
+        return Transaction(**kwargs)
 
     async def sum(self) -> int:
         query = sa.select([sa.func.sum(transactions_table.c.price)])

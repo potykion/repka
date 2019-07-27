@@ -20,6 +20,7 @@ poetry add repka
 ## Usage
 
 ```python
+from typing import Any
 import sqlalchemy as sa
 from aiopg.sa import create_engine
 from repka.api import BaseRepository, IdModel
@@ -41,7 +42,9 @@ class Transaction(IdModel):
 # Define repository
 class TransactionRepo(BaseRepository):
     table = transactions_table
-    deserializer = Transaction
+
+    def deserialize(self, **kwargs: Any) -> Transaction:
+        return Transaction(**kwargs)
 
 # Create SA connection
 connection_params = dict(user='aiopg', database='aiopg', host='127.0.0.1', password='passwd')
