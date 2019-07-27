@@ -174,3 +174,10 @@ async def test_base_repo_get_or_create_returns_entity_if_match(
     )
     assert not created
     assert trans == transactions[0]
+
+
+async def test_get_by_ids_returns_multiple_objects(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    actual_transactions = await repo.get_by_ids([trans.id for trans in transactions if trans.id])
+    assert actual_transactions == transactions

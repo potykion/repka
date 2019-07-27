@@ -82,6 +82,9 @@ class BaseRepository(Generic[T]):
 
         return None
 
+    async def get_by_ids(self, entity_ids: Sequence[int]) -> List[T]:
+        return await self.get_all(filters=[self.table.c.id.in_(entity_ids)])
+
     async def get_by_id(self, entity_id: int) -> Optional[T]:
         return await self.first(self.table.c.id == entity_id)
 
