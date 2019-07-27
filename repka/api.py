@@ -1,4 +1,5 @@
 import json
+import sqlalchemy as sa
 from abc import abstractmethod
 from functools import reduce, partial
 from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Callable
@@ -127,6 +128,12 @@ class BaseRepository(Generic[T]):
 
     async def delete_by_ids(self, entity_ids: Sequence[int]) -> None:
         return await self.delete(self.table.c.id.in_(entity_ids))
+
+    async def exists(self, *filters: BinaryExpression) -> bool:
+        query = sa.select([sa.func.count("*")])
+        query = self._apply_filters(query, filters)
+        result = await self.connection.scalar(query)
+        return bool(result)
 
     def _apply_filters(
         self, query: ClauseElement, filters: Sequence[BinaryExpression]

@@ -198,3 +198,15 @@ async def test_delete_by_ids_deletes_multiple_objects(
 ) -> None:
     await repo.delete_by_ids([trans.id for trans in transactions if trans.id])
     assert not await repo.get_all()
+
+
+async def test_exists_returns_true_if_exists(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    assert await repo.exists(transactions_table.c.price == transactions[0].price)
+
+
+async def test_exists_returns_false_if_not_exists(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    assert not await repo.exists(transactions_table.c.price + 9993 == transactions[0].price)
