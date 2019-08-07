@@ -67,6 +67,13 @@ class BaseRepository(Generic[T]):
         await self.connection.execute(query)
         return entity
 
+    async def update_partial(self, entity: T, **updated_values: Any) -> T:
+        assert entity.id
+
+        query = self.table.update().values(updated_values).where(self.table.c.id == entity.id)
+        await self.connection.execute(query)
+        return entity
+
     async def first(self, *filters: BinaryExpression) -> Optional[T]:
         query = self.table.select()
         query = reduce(lambda query_, filter_: query_.where(filter_), filters, query)
