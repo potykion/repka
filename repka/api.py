@@ -72,6 +72,9 @@ class BaseRepository(Generic[T]):
 
         query = self.table.update().values(updated_values).where(self.table.c.id == entity.id)
         await self.connection.execute(query)
+
+        for field, value in updated_values.items():
+            setattr(entity, field, value)
         return entity
 
     async def first(self, *filters: BinaryExpression) -> Optional[T]:

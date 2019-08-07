@@ -128,6 +128,7 @@ async def test_base_repo_update_partial(repo: TransactionRepo) -> None:
     assert updated_trans
     assert updated_trans.price == old_price
     assert updated_trans.date == new_date
+    assert trans.date == new_date
 
 
 async def test_base_repo_first_return_first_matching_row(
