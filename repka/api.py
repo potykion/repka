@@ -2,6 +2,7 @@ import json
 from abc import abstractmethod
 from functools import reduce
 from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any
+from contextvars import ContextVar
 
 import sqlalchemy as sa
 from aiopg.sa import SAConnection
@@ -12,6 +13,8 @@ from sqlalchemy import Table
 from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
 
 Created = bool
+
+db_connection_var: ContextVar[SAConnection] = ContextVar("db_connection")
 
 
 class IdModel(BaseModel):
@@ -151,6 +154,24 @@ class BaseRepository(Generic[T]):
 
     def execute_in_transaction(self) -> SATransaction:
         return self.connection.begin()
+
+
+class ConnectionVarMixin:
+    """
+    Usage:
+    class TransactionRepo(ConnectionVarMixin, BaseRepository[Transaction]):
+        table = transactions_table
+
+        def deserialize(self, **kwargs: Any) -> Transaction:
+            return Transaction(**kwargs)
+
+    db_connection_var.set(conn)
+    repo = TransactionRepo()
+    trans = await repo.insert(trans)
+    """
+
+    def __init__(self, context_var: ContextVar[SAConnection] = db_connection_var):
+        super().__init__(connection=context_var.get())  # type: ignore
 
 
 def model_to_primitive(model: BaseModel, without_id: bool = False) -> Dict:

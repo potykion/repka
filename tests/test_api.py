@@ -2,13 +2,14 @@ import datetime as dt
 import operator
 import os
 from typing import Optional, List, Any
+from contextvars import ContextVar
 
 import pytest
 import sqlalchemy as sa
 from aiopg.sa import create_engine, SAConnection
 from pydantic import validator
 
-from repka.api import BaseRepository, IdModel
+from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
 
 pytestmark = pytest.mark.asyncio
 
@@ -48,6 +49,13 @@ class TransactionRepo(BaseRepository[Transaction]):
         query = sa.select([sa.func.sum(transactions_table.c.price)])
         sum_ = await self.connection.scalar(query)
         return sum_
+
+
+class TransactionRepoWithConnectionMixin(ConnectionVarMixin, BaseRepository[Transaction]):
+    table = transactions_table
+
+    def deserialize(self, **kwargs: Any) -> Transaction:
+        return Transaction(**kwargs)
 
 
 @pytest.fixture()
@@ -114,7 +122,7 @@ async def test_base_repo_update_updates_row_in_db(repo: TransactionRepo) -> None
     assert updated_trans.date == trans.date
 
 
-async def test_base_repo_update_partial(repo: TransactionRepo) -> None:
+async def test_base_repo_update_partial_updates_some_fields(repo: TransactionRepo) -> None:
     old_price = 100
     old_date = dt.date(2019, 7, 1)
     trans = Transaction(price=old_price, date=old_date)
@@ -229,3 +237,29 @@ async def test_exists_returns_false_if_not_exists(
     repo: TransactionRepo, transactions: List[Transaction]
 ) -> None:
     assert not await repo.exists(transactions_table.c.price + 9993 == transactions[0].price)
+
+
+async def test_connection_var_mixin_allows_to_create_repo_without_connection(
+    conn: SAConnection
+) -> None:
+    trans = Transaction(price=100)
+
+    db_connection_var.set(conn)
+    repo = TransactionRepoWithConnectionMixin()
+    trans = await repo.insert(trans)
+
+    assert trans.id
+
+
+async def test_connection_var_mixin_allows_to_create_repo_without_connection_if_connection_var_is_third_party(
+    conn: SAConnection
+) -> None:
+    trans = Transaction(price=100)
+
+    new_db_connection_var: ContextVar[SAConnection] = ContextVar("new_db_connection_var")
+    new_db_connection_var.set(conn)
+
+    repo = TransactionRepoWithConnectionMixin(new_db_connection_var)
+    trans = await repo.insert(trans)
+
+    assert trans.id

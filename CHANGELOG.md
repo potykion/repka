@@ -5,6 +5,7 @@
 ### Added
 
 - repka.api.BaseRepository.update_partial - update only some field of model (#9 by @ivan-karavan)
+- repka.api.ConnectionVarMixin - allows to set context var somewhere and create repo without connection (#7 by @potykion)
 
 ## 0.3.0 - 2019-07-27
 
