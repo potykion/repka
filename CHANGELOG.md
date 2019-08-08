@@ -2,17 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- repka.api.BaseRepository.update_partial - update only some field of model (#9 by @ivan-karavan)
+
 ## 0.3.0 - 2019-07-27
 
 ### Changed
 
-- repka.api.BaseRepository.(de)serializer prop > (de)serialize method
+- repka.api.BaseRepository.(de)serializer prop > (de)serialize method (#5 by potykion)
 
 ### Added
 
-- repka.api.BaseRepository.get_by_id - get entities by ids
-- repka.api.BaseRepository.delete_by_id(s) - delete entity(ies) by id(s)
-- repka.api.BaseRepository.exists - check entities with filter exists
+- repka.api.BaseRepository.get_by_id - get entities by ids (#3 by potykion)
+- repka.api.BaseRepository.delete_by_id(s) - delete entity(ies) by id(s) (#6 by potykion)
+- repka.api.BaseRepository.exists - check entities with filter exists (#4 by potykion)
 
 
 ## 0.2.0 - 2019-07-18
@@ -21,8 +25,8 @@
 
 - repka.api.BaseRepository.get_by_id - get entity by id or None
 - repka.api.BaseRepository.get_or_create - get first entity by filters or create new with defaults
-- repka.api.BaseRepository.serializer property for defining serialization behaviour
-- repka.api.BaseRepository.deserializer property for defining deserialization behaviour
+- repka.api.BaseRepository.serializer property for defining serialization behaviour (#2 by @Paul-Ilyin)
+- repka.api.BaseRepository.deserializer property for defining deserialization behaviour (#2 by @Paul-Ilyin)
 
 ### Removed
 
