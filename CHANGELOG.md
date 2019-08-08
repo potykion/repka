@@ -1,6 +1,8 @@
 # Changelog
 
-## {new_version} - 2019-07-27
+## Unreleased
+
+## 0.3.0 - 2019-07-27
 
 ### Changed
 
