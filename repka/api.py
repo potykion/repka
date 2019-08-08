@@ -1,9 +1,9 @@
 import json
-import sqlalchemy as sa
 from abc import abstractmethod
 from functools import reduce
 from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any
 
+import sqlalchemy as sa
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
 from aiopg.sa.transaction import Transaction as SATransaction
@@ -70,11 +70,15 @@ class BaseRepository(Generic[T]):
     async def update_partial(self, entity: T, **updated_values: Any) -> T:
         assert entity.id
 
-        query = self.table.update().values(updated_values).where(self.table.c.id == entity.id)
-        await self.connection.execute(query)
-
         for field, value in updated_values.items():
             setattr(entity, field, value)
+
+        serialized_entity = self.serialize(entity)
+        serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
+
+        query = self.table.update().values(serialized_values).where(self.table.c.id == entity.id)
+        await self.connection.execute(query)
+
         return entity
 
     async def first(self, *filters: BinaryExpression) -> Optional[T]:
