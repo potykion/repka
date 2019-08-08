@@ -114,6 +114,23 @@ async def test_base_repo_update_updates_row_in_db(repo: TransactionRepo) -> None
     assert updated_trans.date == trans.date
 
 
+async def test_base_repo_update_partial(repo: TransactionRepo) -> None:
+    old_price = 100
+    old_date = dt.date(2019, 7, 1)
+    trans = Transaction(price=old_price, date=old_date)
+    trans = await repo.insert(trans)
+
+    trans.price = 200
+    new_date = dt.date(2019, 8, 1)
+    await repo.update_partial(trans, date=new_date)
+
+    updated_trans = await repo.first()
+    assert updated_trans
+    assert updated_trans.price == old_price
+    assert updated_trans.date == new_date
+    assert trans.date == new_date
+
+
 async def test_base_repo_first_return_first_matching_row(
     repo: TransactionRepo, transactions: List[Transaction]
 ) -> None:
