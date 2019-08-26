@@ -85,8 +85,15 @@ class BaseRepository(Generic[T]):
         return entity
 
     async def update_many(self, entities: List[T]) -> List[T]:
-        for entity in entities:
-            await self.update(entity)
+        """
+        No way to update many in single query:
+        https://github.com/aio-libs/aiopg/issues/546
+
+        So update entities sequentially in transaction.
+        """
+        async with self.execute_in_transaction():
+            for entity in entities:
+                await self.update(entity)
 
         return entities
 
