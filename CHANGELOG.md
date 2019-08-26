@@ -4,8 +4,8 @@
 
 ### Added
 
-- repka.api.BaseRepository.update_many - update many entities in one transaction
-- repka.api.BaseRepository.first#orders - order entities before getting first row
+- repka.api.BaseRepository.update_many - update many entities in one transaction (#11 by @ivan-karavan)
+- repka.api.BaseRepository.first#orders - order entities before getting first row (#10 by @potykion)
 
 ## 0.4.0 - 2019-08-08
 
