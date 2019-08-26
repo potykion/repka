@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased - 2019-08-26
+
+### Added
+
+- repka.api.BaseRepository.update_many - update many entities in one transaction
+- repka.api.BaseRepository.first#orders - order entities before getting first row
+
 ## 0.4.0 - 2019-08-08
 
 ### Added
