@@ -139,6 +139,19 @@ async def test_base_repo_update_partial_updates_some_fields(repo: TransactionRep
     assert trans.date == new_date
 
 
+async def test_base_repo_update_many(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    new_price = 300
+    for trans in transactions:
+        trans.price = new_price
+
+    await repo.update_many(transactions)
+
+    updated_trans = await repo.get_all()
+    all(updated.price == new_price for updated in updated_trans)
+
+
 async def test_base_repo_first_return_first_matching_row(
     repo: TransactionRepo, transactions: List[Transaction]
 ) -> None:
