@@ -276,3 +276,11 @@ async def test_connection_var_mixin_allows_to_create_repo_without_connection_if_
     trans = await repo.insert(trans)
 
     assert trans.id
+
+
+async def test_first_returns_transaction_with_greatest_price(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    trans = await repo.first(orders=[-transactions_table.c.price])
+    assert trans
+    assert trans.price == max(trans.price for trans in transactions)

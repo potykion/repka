@@ -1,7 +1,7 @@
 import json
 from abc import abstractmethod
 from functools import reduce
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union
 from contextvars import ContextVar
 
 import sqlalchemy as sa
@@ -15,6 +15,8 @@ from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
 Created = bool
 
 db_connection_var: ContextVar[SAConnection] = ContextVar("db_connection")
+
+Columns = List[Union[sa.Column, str]]
 
 
 class IdModel(BaseModel):
@@ -97,9 +99,14 @@ class BaseRepository(Generic[T]):
 
         return entities
 
-    async def first(self, *filters: BinaryExpression) -> Optional[T]:
+    async def first(
+        self, *filters: BinaryExpression, orders: Optional[Columns] = None
+    ) -> Optional[T]:
+        orders = orders or []
+
         query = self.table.select()
         query = reduce(lambda query_, filter_: query_.where(filter_), filters, query)
+        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
 
         rows: ResultProxy = await self.connection.execute(query)
         row = await rows.first()
@@ -129,9 +136,7 @@ class BaseRepository(Generic[T]):
         return entity, True
 
     async def get_all(
-        self,
-        filters: Optional[List[BinaryExpression]] = None,
-        orders: Optional[List[BinaryExpression]] = None,
+        self, filters: Optional[List[BinaryExpression]] = None, orders: Optional[Columns] = None
     ) -> List[T]:
         filters = filters or []
         orders = orders or []
