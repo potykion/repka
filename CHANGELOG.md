@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2019-10-04
+
+### Changed
+
+- repka.api.ConnectionVarMixin - lazy connection receive
+
 ## 0.5.0 - 2019-08-26
 
 ### Added
