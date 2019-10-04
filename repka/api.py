@@ -26,10 +26,38 @@ class IdModel(BaseModel):
 T = TypeVar("T", bound=IdModel)
 
 
-class BaseRepository(Generic[T]):
+class ConnectionMixin:
     def __init__(self, connection: SAConnection) -> None:
-        self.connection = connection
+        self._connection = connection
 
+    @property
+    def connection(self) -> SAConnection:
+        return self._connection
+
+
+class ConnectionVarMixin:
+    """
+    Usage:
+    class TransactionRepo(ConnectionVarMixin, BaseRepository[Transaction]):
+        table = transactions_table
+
+        def deserialize(self, **kwargs: Any) -> Transaction:
+            return Transaction(**kwargs)
+
+    db_connection_var.set(conn)
+    repo = TransactionRepo()
+    trans = await repo.insert(trans)
+    """
+
+    def __init__(self, context_var: ContextVar[SAConnection] = db_connection_var):
+        self.context_var = context_var
+
+    @property
+    def connection(self) -> SAConnection:
+        return self.context_var.get()
+
+
+class BaseRepository(ConnectionMixin, Generic[T]):
     @property
     @abstractmethod
     def table(self) -> Table:
@@ -172,24 +200,6 @@ class BaseRepository(Generic[T]):
 
     def execute_in_transaction(self) -> SATransaction:
         return self.connection.begin()
-
-
-class ConnectionVarMixin:
-    """
-    Usage:
-    class TransactionRepo(ConnectionVarMixin, BaseRepository[Transaction]):
-        table = transactions_table
-
-        def deserialize(self, **kwargs: Any) -> Transaction:
-            return Transaction(**kwargs)
-
-    db_connection_var.set(conn)
-    repo = TransactionRepo()
-    trans = await repo.insert(trans)
-    """
-
-    def __init__(self, context_var: ContextVar[SAConnection] = db_connection_var):
-        super().__init__(connection=context_var.get())  # type: ignore
 
 
 def model_to_primitive(model: BaseModel, without_id: bool = False) -> Dict:
