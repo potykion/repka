@@ -2,6 +2,8 @@
 
 ## 0.7.0 - 2019-10-13
 
+### Added
+
 - repka.api.json_.DictJsonRepo - repository for working with json data
 
 ## 0.6.0 - 2019-10-04
