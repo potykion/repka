@@ -19,6 +19,13 @@ poetry add repka
 
 ## Usage
 
+See [/tests](https://github.com/potykion/repka/tree/master/tests) for **all** examples
+
+
+### BaseRepository
+
+This kind of repository used to work with psql via aiopg & pydantic transforming sql-rows to/from pydantic models:
+
 ```python
 from typing import Any
 import sqlalchemy as sa
@@ -58,6 +65,20 @@ async with create_engine(**connection_params) as engine:
 
 ```
 
+### DictJsonRepo
+
+This kind of repository used to save/load json objects from file:
+
+```python
+from repka.json_ import DictJsonRepo
+
+repo = DictJsonRepo()
+
+songs = [{"artist": "Pig Destroyer", "title": "Thumbsucker"}, {"artist": "Da Menace", "title": "Bag of Funk"}]
+repo.write(songs, "songs.json")
+
+assert repo.read("songs.json") == songs
+```
 
 ## Tests 
 
