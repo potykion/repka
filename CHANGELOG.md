@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - 2019-11-12
+## ## 0.8.1 - 2019-11-12
 
 ### Fixed
 
