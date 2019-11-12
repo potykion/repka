@@ -1,7 +1,7 @@
 import json
 from abc import abstractmethod
 from functools import reduce
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union, Set
 from contextvars import ContextVar
 
 import sqlalchemy as sa
@@ -81,14 +81,8 @@ class BaseRepository(ConnectionMixin, Generic[T]):
         if not entities:
             return entities
 
-        query = (
-            self.table.insert()
-            .values([self.serialize(entity) for entity in entities])
-            .returning(self.table.c.id)
-        )
-        rows = await self.connection.execute(query)
-        for index, row in enumerate(rows):
-            entities[index].id = row[0]
+        async with self.execute_in_transaction():
+            entities = [await self.insert(entity) for entity in entities]
 
         return entities
 
@@ -202,8 +196,12 @@ class BaseRepository(ConnectionMixin, Generic[T]):
         return self.connection.begin()
 
 
-def model_to_primitive(model: BaseModel, without_id: bool = False) -> Dict:
-    data: Dict = json.loads(model.json())
+def model_to_primitive(
+    model: BaseModel, without_id: bool = False, exclude: Sequence[str] = None
+) -> Dict:
+    exclude_set: Set[Union[int, str]] = set(exclude or [])
     if without_id:
-        data.pop("id", None)
+        exclude_set.add("id")
+
+    data: Dict = json.loads(model.json(exclude=exclude_set))
     return data

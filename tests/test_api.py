@@ -1,7 +1,7 @@
 import datetime as dt
 import operator
 import os
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from contextvars import ContextVar
 
 import pytest
@@ -9,7 +9,13 @@ import sqlalchemy as sa
 from aiopg.sa import create_engine, SAConnection
 from pydantic import validator
 
-from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
+from repka.api import (
+    BaseRepository,
+    IdModel,
+    db_connection_var,
+    ConnectionVarMixin,
+    model_to_primitive,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -37,6 +43,49 @@ transactions_table = sa.Table(
     sa.Column("date", sa.Date),
     sa.Column("price", sa.Integer),
 )
+
+
+class Task(IdModel):
+    title: str
+    priority = 0
+
+
+tasks_table = sa.Table(
+    "tasks",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("title", sa.String),
+    sa.Column("priority", sa.Integer, sa.Sequence("priority_seq", metadata=metadata)),
+)
+
+
+class TaskRepo(BaseRepository[Task]):
+    def deserialize(self, **kwargs: Any) -> Task:
+        return Task(**kwargs)
+
+    table = tasks_table
+
+    def serialize(self, entity: Task) -> Dict:
+        if entity.priority == 0:
+            exclude = ["id", "priority"]
+        else:
+            exclude = ["id"]
+
+        return model_to_primitive(entity, exclude=exclude)
+
+    async def insert(self, entity: Task) -> Task:
+        query = (
+            self.table.insert()
+            .values(self.serialize(entity))
+            .returning(self.table.c.id, self.table.c.priority)
+        )
+        rows = await self.connection.execute(query)
+        row = await rows.first()
+
+        entity.id = row.id
+        entity.priority = row.priority
+
+        return entity
 
 
 class TransactionRepo(BaseRepository[Transaction]):
@@ -74,6 +123,11 @@ async def conn() -> SAConnection:
 @pytest.fixture()
 async def repo(conn: SAConnection) -> TransactionRepo:
     return TransactionRepo(conn)
+
+
+@pytest.fixture()
+async def task_repo(conn: SAConnection) -> TaskRepo:
+    return TaskRepo(conn)
 
 
 @pytest.fixture()
@@ -284,3 +338,10 @@ async def test_first_returns_transaction_with_greatest_price(
     trans = await repo.first(orders=[-transactions_table.c.price])
     assert trans
     assert trans.price == max(trans.price for trans in transactions)
+
+
+async def test_insert_many_inserts_sequence_rows(task_repo: TaskRepo) -> None:
+    tasks = [Task(title="task 1"), Task(title="task 2")]
+    tasks = await task_repo.insert_many(tasks)
+    assert tasks[0].priority == 1
+    assert tasks[1].priority == 2

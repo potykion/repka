@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2019-11-12
+
+### Fixed
+
+- repka.api.BaseRepository.insert_many inserts entities sequentially in transaction (#16)
+
 ## 0.7.0 - 2019-10-13
 
 ### Added
