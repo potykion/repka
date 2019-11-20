@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - 2019-11-20
+## 0.7.2 - 2019-11-20
 
 ### Fixed
 
