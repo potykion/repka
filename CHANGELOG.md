@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2019-11-20
+
+### Fixed
+
+- Update pydantic dependency
+
 ## 0.7.1 - 2019-11-12
 
 ### Fixed
