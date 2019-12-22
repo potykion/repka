@@ -6,7 +6,7 @@ target-version = ['py37']
 
 [tool.poetry]
 name = "repka"
-version = "0.7.2"
+version = "0.8.0"
 description = "Python repository pattern implementation"
 authors = ["potykion <potykion@gmail.com>"]
 license = "MIT"
