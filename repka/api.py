@@ -63,17 +63,42 @@ class BaseRepository(ConnectionMixin, Generic[T]):
     def table(self) -> Table:
         pass
 
-    def serialize(self, entity: T) -> Dict:
-        return model_to_primitive(entity, without_id=True)
+    def serialize(self, entity: T, **kwargs: Any) -> Dict:
+        return model_to_primitive(entity, without_id=True, **kwargs)
 
     @abstractmethod
     def deserialize(self, **kwargs: Any) -> T:
         pass
 
+    @property
+    def ignore_insert(self) -> Sequence[str]:
+        """
+        Columns that will be ignored on insert while serialization
+        These columns will be set after insert
+
+        See following tests for example:
+         - tests.test_api.test_insert_sets_ignored_column
+         - tests.test_api.test_insert_many_inserts_sequence_rows
+        """
+        return []
+
     async def insert(self, entity: T) -> T:
-        query = self.table.insert().values(self.serialize(entity)).returning(self.table.c.id)
-        id_ = await self.connection.scalar(query)
-        entity.id = id_
+        returning_columns = (
+            self.table.c.id,
+            *(getattr(self.table.c, col) for col in self.ignore_insert),
+        )
+        query = (
+            self.table.insert()
+            .values(self.serialize(entity, exclude=self.ignore_insert))
+            .returning(*returning_columns)
+        )
+
+        rows = await self.connection.execute(query)
+        row = await rows.first()
+
+        entity.id = row.id
+        for col in self.ignore_insert:
+            setattr(entity, col, getattr(row, col))
 
         return entity
 

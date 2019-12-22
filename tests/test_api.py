@@ -1,21 +1,15 @@
 import datetime as dt
 import operator
 import os
-from typing import Optional, List, Any, Dict
 from contextvars import ContextVar
+from typing import Optional, List, Any
 
 import pytest
 import sqlalchemy as sa
 from aiopg.sa import create_engine, SAConnection
 from pydantic import validator
 
-from repka.api import (
-    BaseRepository,
-    IdModel,
-    db_connection_var,
-    ConnectionVarMixin,
-    model_to_primitive,
-)
+from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
 
 pytestmark = pytest.mark.asyncio
 
@@ -64,28 +58,7 @@ class TaskRepo(BaseRepository[Task]):
         return Task(**kwargs)
 
     table = tasks_table
-
-    def serialize(self, entity: Task) -> Dict:
-        if entity.priority == 0:
-            exclude = ["id", "priority"]
-        else:
-            exclude = ["id"]
-
-        return model_to_primitive(entity, exclude=exclude)
-
-    async def insert(self, entity: Task) -> Task:
-        query = (
-            self.table.insert()
-            .values(self.serialize(entity))
-            .returning(self.table.c.id, self.table.c.priority)
-        )
-        rows = await self.connection.execute(query)
-        row = await rows.first()
-
-        entity.id = row.id
-        entity.priority = row.priority
-
-        return entity
+    ignore_insert = ("priority",)
 
 
 class TransactionRepo(BaseRepository[Transaction]):
@@ -345,3 +318,9 @@ async def test_insert_many_inserts_sequence_rows(task_repo: TaskRepo) -> None:
     tasks = await task_repo.insert_many(tasks)
     assert tasks[0].priority == 1
     assert tasks[1].priority == 2
+
+
+async def test_insert_sets_ignored_column(task_repo: TaskRepo) -> None:
+    task = Task(title="task 1", priority=1337)
+    task = await task_repo.insert(task)
+    assert task.priority == 1
