@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2019-12-22
+
+### Added
+
+- repka.api.BaseRepository.ignore_insert - Columns will be ignored on insert while serialization, these columns will be set after insert
+
 ## 0.7.2 - 2019-11-20
 
 ### Fixed
