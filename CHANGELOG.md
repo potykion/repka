@@ -5,6 +5,7 @@
 ### Added
 
 - repka.api.BaseRepository.ignore_insert - Columns will be ignored on insert while serialization, these columns will be set after insert
+- repka.json_.DictJsonRepo - typings
 
 ## 0.7.2 - 2019-11-20
 
