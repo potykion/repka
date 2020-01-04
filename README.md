@@ -1,5 +1,7 @@
 # repka
 
+![ci](https://travis-ci.org/potykion/repka.svg?branch=master)
+
 Python repository pattern implementation
 
 ## Installation
