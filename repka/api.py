@@ -1,7 +1,6 @@
-import json
 from abc import abstractmethod
 from functools import reduce
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union, Set
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union
 from contextvars import ContextVar
 
 import sqlalchemy as sa
@@ -11,6 +10,8 @@ from aiopg.sa.transaction import Transaction as SATransaction
 from pydantic import BaseModel
 from sqlalchemy import Table
 from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
+
+from repka.utils import model_to_primitive
 
 Created = bool
 
@@ -221,14 +222,3 @@ class BaseRepository(ConnectionMixin, Generic[T]):
 
     def execute_in_transaction(self) -> SATransaction:
         return self.connection.begin()
-
-
-def model_to_primitive(
-    model: BaseModel, without_id: bool = False, exclude: Sequence[str] = None
-) -> Dict:
-    exclude_set: Set[Union[int, str]] = set(exclude or [])
-    if without_id:
-        exclude_set.add("id")
-
-    data: Dict = json.loads(model.json(exclude=exclude_set))
-    return data
