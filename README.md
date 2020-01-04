@@ -84,7 +84,7 @@ assert repo.read("songs.json") == songs
 
 To run tests:
 
-1. Setup [database url](https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls) via `DATABASE_URL` environment variable  
+1. Setup [database url](https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls) via `DB_URL` environment variable  
 
 **WARNING:** Every test run will drop all tables from db
 

@@ -1,6 +1,8 @@
 import json
+from contextlib import asynccontextmanager
 from typing import Sequence, Dict, Set, Union
 
+from aiopg.sa import SAConnection, create_engine
 from pydantic import BaseModel
 
 
@@ -20,3 +22,11 @@ def model_to_primitive(
 
     data: Dict = json.loads(model.json(exclude=exclude_set))
     return data
+
+
+@asynccontextmanager
+async def create_async_db_connection(db_url: str) -> SAConnection:
+    """Create async db connection via aiopg"""
+    async with create_engine(db_url) as engine:
+        async with engine.acquire() as connection:
+            yield connection

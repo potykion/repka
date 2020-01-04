@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2020-01-04
+
+### Added 
+
+- repka.utils.create_async_db_connection: async context manager used to create async db connections 
+
 ## 0.8.0 - 2019-12-22
 
 ### Added

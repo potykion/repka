@@ -1,6 +1,5 @@
 import datetime as dt
 import operator
-import os
 from contextvars import ContextVar
 from typing import Optional, List, Any
 
@@ -10,10 +9,11 @@ from aiopg.sa import create_engine, SAConnection
 from pydantic import validator
 
 from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
+from tests.conftest import DB_URL
 
+
+# Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
 pytestmark = pytest.mark.asyncio
-
-DATABASE_URL = os.environ["DATABASE_URL"]
 
 
 class Transaction(IdModel):
@@ -83,12 +83,12 @@ class TransactionRepoWithConnectionMixin(ConnectionVarMixin, BaseRepository[Tran
 @pytest.fixture()
 async def conn() -> SAConnection:
     # recreate all tables
-    engine = sa.create_engine(DATABASE_URL)
+    engine = sa.create_engine(DB_URL)
     metadata.drop_all(engine)
     metadata.create_all(engine)
 
     # create async connection
-    async with create_engine(DATABASE_URL) as engine:
+    async with create_engine(DB_URL) as engine:
         async with engine.acquire() as conn_:
             yield conn_
 
