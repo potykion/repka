@@ -4,7 +4,8 @@
 
 ### Added 
 
-- repka.utils.create_async_db_connection: async context manager used to create async db connections 
+- repka.utils.create_async_db_connection - async context manager used to create async db connections 
+- repka.api.BaseRepository.get_all_ids - list all entities ids
 
 ## 0.8.0 - 2019-12-22
 

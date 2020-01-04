@@ -222,3 +222,22 @@ class BaseRepository(ConnectionMixin, Generic[T]):
 
     def execute_in_transaction(self) -> SATransaction:
         return self.connection.begin()
+
+    async def get_all_ids(
+        self, filters: Optional[List[BinaryExpression]] = None, orders: Optional[Columns] = None
+    ) -> Sequence[int]:
+        """
+        Same as get_all() but returns only ids.
+        :param filters: List of conditions
+        :param orders: List of orders
+        :return: List of ids
+        """
+        filters = filters or []
+        orders = orders or []
+
+        query = sa.select([self.table.c.id])
+        query = self._apply_filters(query, filters)
+        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
+
+        rows = await self.connection.execute(query)
+        return [row.id for row in rows]

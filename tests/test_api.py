@@ -324,3 +324,8 @@ async def test_insert_sets_ignored_column(task_repo: TaskRepo) -> None:
     task = Task(title="task 1", priority=1337)
     task = await task_repo.insert(task)
     assert task.priority == 1
+
+
+async def test_get_all_ids(repo: TransactionRepo, transactions: List[Transaction]) -> None:
+    ids = await repo.get_all_ids()
+    assert ids == [trans.id for trans in transactions]
