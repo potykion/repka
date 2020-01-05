@@ -59,6 +59,10 @@ class ConnectionVarMixin:
 
 
 class BaseRepository(ConnectionMixin, Generic[T]):
+    """
+    Execute sql-queries, convert sql-row-dicts to/from pydantic models
+    """
+
     @property
     @abstractmethod
     def table(self) -> Table:
