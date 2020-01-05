@@ -104,7 +104,17 @@ async with create_async_db_connection(db_url) as conn:
 ##### Other methods & properties
 
 - `repo.serialize(entity: T)` - convert {entity} to dict (e.g. in `insert` and `update` methods)  
-- `repo.deserialize(**kwargs)` - convert {kwargs} to entity (e.g. in `first` and `get_all` methods) 
+- `repo.deserialize(**kwargs)` - convert {kwargs} to entity (e.g. in `first` and `get_all` methods)
+- `repo.execute_in_transaction()` - context manager that allows execute multiple queries in transaction 
+
+    Example: delete all old entities and insert new one in single transaction:
+    
+    ```python
+    async with repo.execute_in_transaction():
+      await repo.delete()
+      await repo.insert(Task(title="New task"))
+    ``` 
+  
 - `repo.ignore_insert` - list of entity fields that will be ignored on insert and set after insert, useful for auto incrementing / default fields like dates or sequence numbers
 
 #### repka.api.ConnectionVarMixin
