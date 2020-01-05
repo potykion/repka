@@ -1,5 +1,7 @@
 # repka
 
+![ci](https://travis-ci.org/potykion/repka.svg?branch=master)
+
 Repository pattern implementation - isolate db manipulation from domain models
 
 ## Installation
