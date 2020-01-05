@@ -49,7 +49,7 @@ tasks_table = sa.Table(
 #   set sqlalchemy-table via table property and 
 #   set deserialize method which create pydantic model from kwargs 
 # Kwargs is sql-row data returned by sqlalchemy  
-class TaskRepo(BaseRepositor[Task]):
+class TaskRepo(BaseRepository[Task]):
     table = tasks_table
 
     def deserialize(self, **kwargs):
