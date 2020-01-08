@@ -53,18 +53,12 @@ tasks_table = sa.Table(
 
 
 class TaskRepo(BaseRepository[Task]):
-    def deserialize(self, **kwargs: Any) -> Task:
-        return Task(**kwargs)
-
     table = tasks_table
     ignore_insert = ("priority",)
 
 
 class TransactionRepo(BaseRepository[Transaction]):
     table = transactions_table
-
-    def deserialize(self, **kwargs: Any) -> Transaction:
-        return Transaction(**kwargs)
 
     async def sum(self) -> int:
         query = sa.select([sa.func.sum(transactions_table.c.price)])

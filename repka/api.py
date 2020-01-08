@@ -1,9 +1,10 @@
 from abc import abstractmethod
 from contextvars import ContextVar
 from functools import reduce
-from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union
+from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union, Type
 
 import sqlalchemy as sa
+import typing_inspect
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
 from aiopg.sa.transaction import Transaction as SATransaction
@@ -71,9 +72,22 @@ class BaseRepository(ConnectionMixin, Generic[T]):
     def serialize(self, entity: T) -> Dict:
         return model_to_primitive(entity, without_id=True)
 
-    @abstractmethod
     def deserialize(self, **kwargs: Any) -> T:
-        pass
+        entity_type = self.__get_generic_type()
+        return entity_type(**kwargs)
+
+    def __get_generic_type(self) -> Type[T]:
+        """
+        Get generic type of inherited BaseRepository:
+
+        >>> class TransactionRepo(BaseRepository[Transaction]):
+        ...     table = transactions_table
+        ... # doctest: +SKIP
+        >>> assert TransactionRepo().__get_generic_type() is Transaction # doctest: +SKIP
+        """
+        return cast(
+            Type[T], typing_inspect.get_args(typing_inspect.get_generic_bases(self)[0])[0]
+        )
 
     @property
     def ignore_insert(self) -> Sequence[str]:
