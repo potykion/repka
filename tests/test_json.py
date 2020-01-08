@@ -41,4 +41,4 @@ def test_dict_json_repo_reads_file_if_exist(testdir: Testdir) -> None:
 
     repo: DictJsonRepo[Sequence[Dict]] = DictJsonRepo()
 
-    assert repo.read_or_write_default(file, lambda: []) == data
+    assert repo.read_or_write_default(file, lambda: []) == (data, True)

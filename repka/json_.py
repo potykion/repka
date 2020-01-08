@@ -1,7 +1,8 @@
 import json
 import os
-from typing import Dict, Callable, Sequence, Union, TypeVar, Generic
+from typing import Dict, Callable, Sequence, Union, TypeVar, Generic, Tuple
 
+Exists = bool
 JsonSerializable = Union[Dict, Sequence, str, bool, int, float]
 T = TypeVar("T", bound=JsonSerializable)
 
@@ -20,11 +21,13 @@ class DictJsonRepo(Generic[T]):
 
         return data
 
-    def read_or_write_default(self, filename: str, default_factory: Callable[[], T]) -> T:
+    def read_or_write_default(
+        self, filename: str, default_factory: Callable[[], T]
+    ) -> Tuple[T, Exists]:
         if os.path.exists(self._build_path(filename)):
-            return self.read(filename)
+            return self.read(filename), True
         else:
-            return self.write(default_factory(), filename)
+            return self.write(default_factory(), filename), False
 
     def _build_path(self, filename: str) -> str:
         return os.path.join(self.directory, filename)
