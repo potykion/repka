@@ -1,7 +1,7 @@
 from abc import abstractmethod
+from contextvars import ContextVar
 from functools import reduce
 from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union
-from contextvars import ContextVar
 
 import sqlalchemy as sa
 from aiopg.sa import SAConnection
@@ -202,9 +202,20 @@ class BaseRepository(ConnectionMixin, Generic[T]):
         rows = await self.connection.execute(query)
         return [cast(T, self.deserialize(**row)) for row in rows]
 
-    async def delete(self, *filters: BinaryExpression) -> None:
+    async def delete(self, *filters: Optional[BinaryExpression]) -> None:
+        if not len(filters):
+            raise ValueError(
+                """No filters set, are you sure you want to delete all table rows?
+            If so call the method with None:
+            repo.delete(None)"""
+            )
+
+        # None passed => delete all table rows
+        if filters[0] is None:
+            filters = tuple()
+
         query = self.table.delete()
-        query = self._apply_filters(query, filters)
+        query = self._apply_filters(query, cast(Sequence[BinaryExpression], filters))
         await self.connection.execute(query)
 
     async def delete_by_id(self, entity_id: int) -> None:
@@ -228,7 +239,7 @@ class BaseRepository(ConnectionMixin, Generic[T]):
         return self.connection.begin()
 
     async def get_all_ids(
-        self, filters: Optional[List[BinaryExpression]] = None, orders: Optional[Columns] = None
+        self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
     ) -> Sequence[int]:
         """
         Same as get_all() but returns only ids.

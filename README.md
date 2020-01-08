@@ -98,6 +98,9 @@ async with create_async_db_connection(db_url) as conn:
 ##### Delete methods
 
 - `repo.delete(*filters: BinaryExpression)` - delete entities matching {filters} via sql `delete` statement
+
+    > To delete all entities pass `None` as an arg: `repo.delete(None)`   
+
 - `repo.delete_by_id(entity_id: int)` - delete entity with {entity_id}
 - `repo.delete_by_ids(entity_ids: List[int])` - delete entities whose id in {entity_ids}
 

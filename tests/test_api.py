@@ -11,7 +11,6 @@ from pydantic import validator
 from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
 from tests.conftest import DB_URL
 
-
 # Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
 pytestmark = pytest.mark.asyncio
 
@@ -329,3 +328,15 @@ async def test_insert_sets_ignored_column(task_repo: TaskRepo) -> None:
 async def test_get_all_ids(repo: TransactionRepo, transactions: List[Transaction]) -> None:
     ids = await repo.get_all_ids()
     assert ids == [trans.id for trans in transactions]
+
+
+async def test_delete_without_args_raises_error(repo: TransactionRepo) -> None:
+    with pytest.raises(ValueError):
+        await repo.delete()
+
+
+async def test_delete_with_none_deletes_all_entities(
+    repo: TransactionRepo, transactions: List[Transaction]
+) -> None:
+    await repo.delete(None)
+    assert (await repo.get_all()) == []
