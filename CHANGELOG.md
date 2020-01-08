@@ -1,17 +1,26 @@
 # Changelog
 
+## Unreleased - 2020-01-08
+
+### Changed
+
+- repka.api.BaseRepository.deserialize - no need to override in inheritors (#22)
+- repka.api.BaseRepository.delete - to delete all table rows you should pass (#23)
+- repka.json_.DictJsonRepo.read_or_write_default - return tuple of data and existence
+- Detailed docs
+
 ## 0.9.0 - 2020-01-04
 
 ### Added 
 
-- repka.utils.create_async_db_connection - async context manager used to create async db connections 
-- repka.api.BaseRepository.get_all_ids - list all entities ids
+- repka.utils.create_async_db_connection - async context manager used to create async db connections (#20) 
+- repka.api.BaseRepository.get_all_ids - list all entities ids (#19)
 
 ## 0.8.0 - 2019-12-22
 
 ### Added
 
-- repka.api.BaseRepository.ignore_insert - Columns will be ignored on insert while serialization, these columns will be set after insert
+- repka.api.BaseRepository.ignore_insert - Columns will be ignored on insert while serialization, these columns will be set after insert (#17)
 - repka.json_.DictJsonRepo - typings
 
 ## 0.7.2 - 2019-11-20
