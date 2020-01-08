@@ -152,14 +152,44 @@ This kind of repository used to save/load json objects from file:
 ```python
 from repka.json_ import DictJsonRepo
 
+songs = [
+    {"artist": "Pig Destroyer", "title": "Thumbsucker"}, 
+    {"artist": "Da Menace", "title": "Bag of Funk"}
+]
+
 repo = DictJsonRepo()
 
-songs = [{"artist": "Pig Destroyer", "title": "Thumbsucker"}, {"artist": "Da Menace", "title": "Bag of Funk"}]
 repo.write(songs, "songs.json")
 
 assert repo.read("songs.json") == songs
 ```
 
+#### DictJsonRepo methods
+
+- `repo.read(filename: str)` - read json file with {filename}, return its content as json primitive (list, dict, str, etc.)
+
+- `repo.write(data: T, filename: str)` - serialize json primitive {data} and save it to file with {filename}
+
+- `repo.read_or_write_default(filename: str, default_factory: Callable[[], T])` - check file with {filename} exists, read its content if exists, execute {default_factory} and write it to file with {filename} otherwise
+    
+    - Example: read data from `test.json` or create `test.json` with `[{"field": "value"}]` if no such file: 
+    
+        ```python
+        repo = DictJsonRepo()
+        repo.read_or_write_default("test.json", lambda: [{"field": "value"}])
+        ```
+
+#### DictJsonRepo constructor
+
+- `DictJsonRepo(directory: str)` - set directory where files will be read / written; if not set current working directory will be used  
+
+    - Example: read files from `data/` dir: 
+    
+        ```python
+        repo = DictJsonRepo("data")
+        repo.read("test.json") # will read "./data/test.json"
+        ``` 
+    
 ## Development and contribution
 
 ### Dependencies 
