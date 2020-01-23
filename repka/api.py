@@ -64,30 +64,14 @@ class BaseRepository(ConnectionMixin, Generic[T]):
     Execute sql-queries, convert sql-row-dicts to/from pydantic models
     """
 
+    # =============
+    # CONFIGURATION
+    # =============
+
     @property
     @abstractmethod
     def table(self) -> Table:
         pass
-
-    def serialize(self, entity: T) -> Dict:
-        return model_to_primitive(entity, without_id=True)
-
-    def deserialize(self, **kwargs: Any) -> T:
-        entity_type = self.__get_generic_type()
-        return entity_type(**kwargs)
-
-    def __get_generic_type(self) -> Type[T]:
-        """
-        Get generic type of inherited BaseRepository:
-
-        >>> class TransactionRepo(BaseRepository[Transaction]):
-        ...     table = transactions_table
-        ... # doctest: +SKIP
-        >>> assert TransactionRepo().__get_generic_type() is Transaction # doctest: +SKIP
-        """
-        return cast(
-            Type[T], typing_inspect.get_args(typing_inspect.get_generic_bases(self)[0])[0]
-        )
 
     @property
     def ignore_insert(self) -> Sequence[str]:
@@ -101,71 +85,16 @@ class BaseRepository(ConnectionMixin, Generic[T]):
         """
         return []
 
-    async def insert(self, entity: T) -> T:
-        # key should be removed manually (not in .serialize) due to compatibility
-        serialized = {
-            key: value
-            for key, value in self.serialize(entity).items()
-            if key not in self.ignore_insert
-        }
-        returning_columns = (
-            self.table.c.id,
-            *(getattr(self.table.c, col) for col in self.ignore_insert),
-        )
-        query = self.table.insert().values(serialized).returning(*returning_columns)
+    def serialize(self, entity: T) -> Dict:
+        return model_to_primitive(entity, without_id=True)
 
-        rows = await self.connection.execute(query)
-        row = await rows.first()
+    def deserialize(self, **kwargs: Any) -> T:
+        entity_type = self.__get_generic_type()
+        return entity_type(**kwargs)
 
-        entity.id = row.id
-        for col in self.ignore_insert:
-            setattr(entity, col, getattr(row, col))
-
-        return entity
-
-    async def insert_many(self, entities: List[T]) -> List[T]:
-        if not entities:
-            return entities
-
-        async with self.execute_in_transaction():
-            entities = [await self.insert(entity) for entity in entities]
-
-        return entities
-
-    async def update(self, entity: T) -> T:
-        assert entity.id
-        query = (
-            self.table.update().values(self.serialize(entity)).where(self.table.c.id == entity.id)
-        )
-        await self.connection.execute(query)
-        return entity
-
-    async def update_partial(self, entity: T, **updated_values: Any) -> T:
-        assert entity.id
-
-        for field, value in updated_values.items():
-            setattr(entity, field, value)
-
-        serialized_entity = self.serialize(entity)
-        serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
-
-        query = self.table.update().values(serialized_values).where(self.table.c.id == entity.id)
-        await self.connection.execute(query)
-
-        return entity
-
-    async def update_many(self, entities: List[T]) -> List[T]:
-        """
-        No way to update many in single query:
-        https://github.com/aio-libs/aiopg/issues/546
-
-        So update entities sequentially in transaction.
-        """
-        async with self.execute_in_transaction():
-            for entity in entities:
-                await self.update(entity)
-
-        return entities
+    # ==============
+    # SELECT METHODS
+    # ==============
 
     async def first(
         self, *filters: BinaryExpression, orders: Optional[Columns] = None
@@ -216,6 +145,109 @@ class BaseRepository(ConnectionMixin, Generic[T]):
         rows = await self.connection.execute(query)
         return [cast(T, self.deserialize(**row)) for row in rows]
 
+    async def get_all_ids(
+        self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
+    ) -> Sequence[int]:
+        """
+        Same as get_all() but returns only ids.
+        :param filters: List of conditions
+        :param orders: List of orders
+        :return: List of ids
+        """
+        filters = filters or []
+        orders = orders or []
+
+        query = sa.select([self.table.c.id])
+        query = self._apply_filters(query, filters)
+        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
+
+        rows = await self.connection.execute(query)
+        return [row.id for row in rows]
+
+    async def exists(self, *filters: BinaryExpression) -> bool:
+        query = sa.select([sa.func.count("*")])
+        query = self._apply_filters(query, filters)
+        result = await self.connection.scalar(query)
+        return bool(result)
+
+    # ==============
+    # INSERT METHODS
+    # ==============
+
+    async def insert(self, entity: T) -> T:
+        # key should be removed manually (not in .serialize) due to compatibility
+        serialized = {
+            key: value
+            for key, value in self.serialize(entity).items()
+            if key not in self.ignore_insert
+        }
+        returning_columns = (
+            self.table.c.id,
+            *(getattr(self.table.c, col) for col in self.ignore_insert),
+        )
+        query = self.table.insert().values(serialized).returning(*returning_columns)
+
+        rows = await self.connection.execute(query)
+        row = await rows.first()
+
+        entity.id = row.id
+        for col in self.ignore_insert:
+            setattr(entity, col, getattr(row, col))
+
+        return entity
+
+    async def insert_many(self, entities: List[T]) -> List[T]:
+        if not entities:
+            return entities
+
+        async with self.execute_in_transaction():
+            entities = [await self.insert(entity) for entity in entities]
+
+        return entities
+
+    # ==============
+    # UPDATE METHODS
+    # ==============
+
+    async def update(self, entity: T) -> T:
+        assert entity.id
+        query = (
+            self.table.update().values(self.serialize(entity)).where(self.table.c.id == entity.id)
+        )
+        await self.connection.execute(query)
+        return entity
+
+    async def update_partial(self, entity: T, **updated_values: Any) -> T:
+        assert entity.id
+
+        for field, value in updated_values.items():
+            setattr(entity, field, value)
+
+        serialized_entity = self.serialize(entity)
+        serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
+
+        query = self.table.update().values(serialized_values).where(self.table.c.id == entity.id)
+        await self.connection.execute(query)
+
+        return entity
+
+    async def update_many(self, entities: List[T]) -> List[T]:
+        """
+        No way to update many in single query:
+        https://github.com/aio-libs/aiopg/issues/546
+
+        So update entities sequentially in transaction.
+        """
+        async with self.execute_in_transaction():
+            for entity in entities:
+                await self.update(entity)
+
+        return entities
+
+    # ==============
+    # DELETE METHODS
+    # ==============
+
     async def delete(self, *filters: Optional[BinaryExpression]) -> None:
         if not len(filters):
             raise ValueError(
@@ -238,35 +270,31 @@ class BaseRepository(ConnectionMixin, Generic[T]):
     async def delete_by_ids(self, entity_ids: Sequence[int]) -> None:
         return await self.delete(self.table.c.id.in_(entity_ids))
 
-    async def exists(self, *filters: BinaryExpression) -> bool:
-        query = sa.select([sa.func.count("*")])
-        query = self._apply_filters(query, filters)
-        result = await self.connection.scalar(query)
-        return bool(result)
+    # ==============
+    # OTHER METHODS
+    # ==============
+
+    def execute_in_transaction(self) -> SATransaction:
+        return self.connection.begin()
+
+    # ==============
+    # PROTECTED & PRIVATE METHODS
+    # ==============
 
     def _apply_filters(
         self, query: ClauseElement, filters: Sequence[BinaryExpression]
     ) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
 
-    def execute_in_transaction(self) -> SATransaction:
-        return self.connection.begin()
-
-    async def get_all_ids(
-        self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
-    ) -> Sequence[int]:
+    def __get_generic_type(self) -> Type[T]:
         """
-        Same as get_all() but returns only ids.
-        :param filters: List of conditions
-        :param orders: List of orders
-        :return: List of ids
+        Get generic type of inherited BaseRepository:
+
+        >>> class TransactionRepo(BaseRepository[Transaction]):
+        ...     table = transactions_table
+        ... # doctest: +SKIP
+        >>> assert TransactionRepo().__get_generic_type() is Transaction # doctest: +SKIP
         """
-        filters = filters or []
-        orders = orders or []
-
-        query = sa.select([self.table.c.id])
-        query = self._apply_filters(query, filters)
-        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
-
-        rows = await self.connection.execute(query)
-        return [row.id for row in rows]
+        return cast(
+            Type[T], typing_inspect.get_args(typing_inspect.get_generic_bases(self)[0])[0]
+        )
