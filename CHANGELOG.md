@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0.alpha - 2020-01-26
+
+### Added
+
+- SQLite support via databases
+
 ## 0.10.0 - 2020-01-08
 
 ### Changed
