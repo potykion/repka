@@ -5,7 +5,6 @@ from aiopg.sa import SAConnection
 from pydantic import BaseModel
 
 from repka.utils import model_to_primitive, create_async_db_connection
-from tests.conftest import DB_URL
 
 
 class MyModel(BaseModel):
@@ -39,7 +38,7 @@ def test_model_to_primitive_excludes_fields_from_list(model: MyModel) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_async_db_connection() -> None:
-    async with create_async_db_connection(DB_URL) as connection:
+async def test_create_async_db_connection(db_url: str) -> None:
+    async with create_async_db_connection(db_url) as connection:
         conn: SAConnection = connection
         assert conn.connection.status

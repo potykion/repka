@@ -1,6 +1,11 @@
 import os
 
+import pytest
+
 # Enable testdir fixture (https://docs.pytest.org/en/latest/reference.html#testdir)
 pytest_plugins = "pytester"
 
-DB_URL = os.environ["DB_URL"]
+
+@pytest.fixture()
+def db_url() -> str:
+    return os.environ["DB_URL"]

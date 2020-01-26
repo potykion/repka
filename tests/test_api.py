@@ -9,7 +9,6 @@ from aiopg.sa import create_engine, SAConnection
 from pydantic import validator
 
 from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
-from tests.conftest import DB_URL
 
 # Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
 pytestmark = pytest.mark.asyncio
@@ -74,14 +73,14 @@ class TransactionRepoWithConnectionMixin(ConnectionVarMixin, BaseRepository[Tran
 
 
 @pytest.fixture()
-async def conn() -> SAConnection:
+async def conn(db_url: str) -> SAConnection:
     # recreate all tables
-    engine = sa.create_engine(DB_URL)
+    engine = sa.create_engine(db_url)
     metadata.drop_all(engine)
     metadata.create_all(engine)
 
     # create async connection
-    async with create_engine(DB_URL) as engine:
+    async with create_engine(db_url) as engine:
         async with engine.acquire() as conn_:
             yield conn_
 
