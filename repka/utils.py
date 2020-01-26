@@ -1,4 +1,5 @@
 import json
+import datetime as dt
 from contextlib import asynccontextmanager
 from typing import Sequence, Dict, Set, Union
 
@@ -7,7 +8,10 @@ from pydantic import BaseModel
 
 
 def model_to_primitive(
-    model: BaseModel, without_id: bool = False, exclude: Sequence[str] = None
+    model: BaseModel,
+    without_id: bool = False,
+    exclude: Sequence[str] = None,
+    keep_dates: bool = False,
 ) -> Dict:
     """
     Convert pydantic-{model} to dict transforming complex types to primitives (e.g. datetime to str)
@@ -21,6 +25,13 @@ def model_to_primitive(
         exclude_set.add("id")
 
     data: Dict = json.loads(model.json(exclude=exclude_set))
+
+    if keep_dates:
+        data = {
+            key: value if model.__fields__[key].type_ is not dt.date else getattr(model, key)
+            for key, value in data.items()
+        }
+
     return data
 
 

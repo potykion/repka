@@ -1,14 +1,15 @@
 import datetime as dt
 import operator
 from contextvars import ContextVar
-from typing import Optional, List, Any
+from typing import Optional, List, Any, AsyncGenerator
 
 import pytest
 import sqlalchemy as sa
-from aiopg.sa import create_engine, SAConnection
+from aiopg.sa import SAConnection
+from databases import Database
 from pydantic import validator
 
-from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
+from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin, SQLiteRepo
 
 # Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
 pytestmark = pytest.mark.asyncio
@@ -51,17 +52,17 @@ tasks_table = sa.Table(
 )
 
 
-class TaskRepo(BaseRepository[Task]):
+class TaskRepo(SQLiteRepo[Task]):
     table = tasks_table
     ignore_insert = ("priority",)
 
 
-class TransactionRepo(BaseRepository[Transaction]):
+class TransactionRepo(SQLiteRepo[Transaction]):
     table = transactions_table
 
     async def sum(self) -> int:
         query = sa.select([sa.func.sum(transactions_table.c.price)])
-        sum_ = await self.connection.scalar(query)
+        sum_ = await self.connection.fetch_val(query)
         return sum_
 
 
@@ -73,25 +74,24 @@ class TransactionRepoWithConnectionMixin(ConnectionVarMixin, BaseRepository[Tran
 
 
 @pytest.fixture()
-async def conn(db_url: str) -> SAConnection:
+async def conn(db_url: str) -> AsyncGenerator[Database, None]:
     # recreate all tables
     engine = sa.create_engine(db_url)
     metadata.drop_all(engine)
     metadata.create_all(engine)
 
     # create async connection
-    async with create_engine(db_url) as engine:
-        async with engine.acquire() as conn_:
-            yield conn_
+    async with Database(db_url) as conn_:
+        yield conn_
 
 
 @pytest.fixture()
-async def repo(conn: SAConnection) -> TransactionRepo:
+async def repo(conn: Database) -> TransactionRepo:
     return TransactionRepo(conn)
 
 
 @pytest.fixture()
-async def task_repo(conn: SAConnection) -> TaskRepo:
+async def task_repo(conn: Database) -> TaskRepo:
     return TaskRepo(conn)
 
 
@@ -271,6 +271,7 @@ async def test_exists_returns_false_if_not_exists(
     assert not await repo.exists(transactions_table.c.price + 9993 == transactions[0].price)
 
 
+@pytest.mark.skip("No connection var support for SQLite")
 async def test_connection_var_mixin_allows_to_create_repo_without_connection(
     conn: SAConnection
 ) -> None:
@@ -283,6 +284,7 @@ async def test_connection_var_mixin_allows_to_create_repo_without_connection(
     assert trans.id
 
 
+@pytest.mark.skip("No connection var support for SQLite")
 async def test_connection_var_mixin_allows_to_create_repo_without_connection_if_connection_var_is_third_party(
     conn: SAConnection
 ) -> None:
@@ -305,6 +307,7 @@ async def test_first_returns_transaction_with_greatest_price(
     assert trans.price == max(trans.price for trans in transactions)
 
 
+@pytest.mark.skip("No sequence support in sqlite")
 async def test_insert_many_inserts_sequence_rows(task_repo: TaskRepo) -> None:
     tasks = [Task(title="task 1"), Task(title="task 2")]
     tasks = await task_repo.insert_many(tasks)
@@ -312,6 +315,7 @@ async def test_insert_many_inserts_sequence_rows(task_repo: TaskRepo) -> None:
     assert tasks[1].priority == 2
 
 
+@pytest.mark.skip("No sequence support in sqlite")
 async def test_insert_sets_ignored_column(task_repo: TaskRepo) -> None:
     task = Task(title="task 1", priority=1337)
     task = await task_repo.insert(task)

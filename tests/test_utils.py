@@ -38,6 +38,7 @@ def test_model_to_primitive_excludes_fields_from_list(model: MyModel) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip("No support for SQLite")
 async def test_create_async_db_connection(db_url: str) -> None:
     async with create_async_db_connection(db_url) as connection:
         conn: SAConnection = connection
