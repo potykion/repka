@@ -26,7 +26,8 @@ BaseRepository used to execute sql-queries (via [aiopg & sqlalchemy](https://git
 
 ```python
 import sqlalchemy as sa
-from repka.api import BaseRepository, IdModel
+from repka.api import BaseRepository
+from repka.models import IdModel
 from repka.utils import create_async_db_connection
 
 # Define pydantic model

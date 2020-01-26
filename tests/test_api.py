@@ -1,15 +1,15 @@
 import datetime as dt
 import operator
 from contextvars import ContextVar
-from typing import Optional, List, Any, AsyncGenerator
+from typing import Optional, List, Any, AsyncGenerator, Union
 
 import pytest
 import sqlalchemy as sa
-from aiopg.sa import SAConnection
+from aiopg.sa import SAConnection, create_engine
 from databases import Database
 from pydantic import validator
-
-from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin, SQLiteRepo
+from repka.api import BaseRepository, db_connection_var, ConnectionVarMixin
+from repka.models import IdModel
 
 # Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
 pytestmark = pytest.mark.asyncio
@@ -52,17 +52,22 @@ tasks_table = sa.Table(
 )
 
 
-class TaskRepo(SQLiteRepo[Task]):
+class TaskRepo(BaseRepository[Task]):
     table = tasks_table
     ignore_insert = ("priority",)
 
 
-class TransactionRepo(SQLiteRepo[Transaction]):
+class TransactionRepo(BaseRepository[Transaction]):
     table = transactions_table
 
     async def sum(self) -> int:
         query = sa.select([sa.func.sum(transactions_table.c.price)])
-        sum_ = await self.connection.fetch_val(query)
+        if isinstance(self.connection, SAConnection):
+            sum_ = await self.connection.scalar(query)
+        elif isinstance(self.connection, Database):
+            sum_ = await self.connection.fetch_val(query)
+        else:
+            raise ValueError(f"Invalid connection type: {type(self.connection)}")
         return sum_
 
 
@@ -74,24 +79,29 @@ class TransactionRepoWithConnectionMixin(ConnectionVarMixin, BaseRepository[Tran
 
 
 @pytest.fixture()
-async def conn(db_url: str) -> AsyncGenerator[Database, None]:
+async def conn(db_url: str) -> AsyncGenerator[Union[SAConnection, Database], None]:
     # recreate all tables
     engine = sa.create_engine(db_url)
     metadata.drop_all(engine)
     metadata.create_all(engine)
 
     # create async connection
-    async with Database(db_url) as conn_:
-        yield conn_
+    if db_url.startswith("postgresql://"):
+        async with create_engine(db_url) as engine:
+            async with engine.acquire() as conn_:
+                yield conn_
+    elif db_url.startswith("sqlite://"):
+        async with Database(db_url) as conn_:
+            yield conn_
 
 
 @pytest.fixture()
-async def repo(conn: Database) -> TransactionRepo:
+async def repo(conn: SAConnection) -> TransactionRepo:
     return TransactionRepo(conn)
 
 
 @pytest.fixture()
-async def task_repo(conn: Database) -> TaskRepo:
+async def task_repo(conn: SAConnection) -> TaskRepo:
     return TaskRepo(conn)
 
 
