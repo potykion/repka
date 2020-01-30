@@ -238,9 +238,11 @@ class BaseRepository(ConnectionMixin, Generic[T]):
 
         So update entities sequentially in transaction.
         """
+        if not entities:
+            return entities
+
         async with self.execute_in_transaction():
-            for entity in entities:
-                await self.update(entity)
+            entities = [await self.update(entity) for entity in entities]
 
         return entities
 

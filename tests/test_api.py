@@ -1,7 +1,8 @@
 import datetime as dt
 import operator
+from contextlib import suppress
 from contextvars import ContextVar
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union
 
 import pytest
 import sqlalchemy as sa
@@ -70,6 +71,22 @@ class TransactionRepoWithConnectionMixin(ConnectionVarMixin, BaseRepository[Tran
 
     def deserialize(self, **kwargs: Any) -> Transaction:
         return Transaction(**kwargs)
+
+
+class UnionModel(IdModel):
+    int_or_str: Union[int, str]
+
+
+int_models_table = sa.Table(
+    "int_models",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("int_or_str", sa.Integer),
+)
+
+
+class UnionModelRepo(BaseRepository[UnionModel]):
+    table = int_models_table
 
 
 @pytest.fixture()
@@ -333,3 +350,23 @@ async def test_delete_with_none_deletes_all_entities(
 ) -> None:
     await repo.delete(None)
     assert (await repo.get_all()) == []
+
+
+async def test_insert_many_in_transaction_rollback_on_error(conn: SAConnection) -> None:
+    repo = UnionModelRepo(conn)
+
+    with suppress(Exception):
+        await repo.insert_many([UnionModel(int_or_str=1), UnionModel(int_or_str="ass")])
+
+    assert len(await repo.get_all()) == 0
+
+
+async def test_error_in_transaction_inside_transaction_rollback(conn: SAConnection) -> None:
+    repo = UnionModelRepo(conn)
+
+    with suppress(Exception):
+        async with repo.execute_in_transaction():
+            await repo.insert(UnionModel(int_or_str=1))
+            await repo.insert_many([UnionModel(int_or_str=1), UnionModel(int_or_str="ass")])
+
+    assert len(await repo.get_all()) == 0
