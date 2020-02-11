@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2020-02-11
+
+### Fixed
+
+- repka.api.BaseRepository.__get_generic_type - fix type extraction for mixin-inheritance (#28)
+
 ## 0.10.0 - 2020-01-08
 
 ### Changed
