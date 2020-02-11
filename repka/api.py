@@ -298,5 +298,5 @@ class BaseRepository(ConnectionMixin, Generic[T]):
         >>> assert TransactionRepo().__get_generic_type() is Transaction # doctest: +SKIP
         """
         return cast(
-            Type[T], typing_inspect.get_args(typing_inspect.get_generic_bases(self)[0])[0]
+            Type[T], typing_inspect.get_args(typing_inspect.get_generic_bases(self)[-1])[0]
         )

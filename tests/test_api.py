@@ -370,3 +370,14 @@ async def test_error_in_transaction_inside_transaction_rollback(conn: SAConnecti
             await repo.insert_many([UnionModel(int_or_str=1), UnionModel(int_or_str="ass")])
 
     assert len(await repo.get_all()) == 0
+
+
+async def test___get_generic_type(repo: TransactionRepo) -> None:
+    type_ = repo._BaseRepository__get_generic_type()  # type: ignore
+    assert type_ is Transaction
+
+
+async def test___get_generic_type_for_mixin() -> None:
+    repo = TransactionRepoWithConnectionMixin()
+    type_ = repo._BaseRepository__get_generic_type()  # type: ignore
+    assert type_ is Transaction
