@@ -358,5 +358,5 @@ async def test_error_in_transaction_inside_transaction_rollback(conn: SAConnecti
 
 
 async def test___get_generic_type(repo: TransactionRepo) -> None:
-    type_ = repo._BaseRepository__get_generic_type()  # type: ignore
+    type_ = repo._get_generic_type()
     assert type_ is Transaction

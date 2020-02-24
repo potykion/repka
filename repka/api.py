@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from functools import reduce
 from typing import TypeVar, Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union, Type
@@ -68,7 +69,7 @@ class BaseRepository(Generic[T]):
         return model_to_primitive(entity, without_id=True)
 
     def deserialize(self, **kwargs: Any) -> T:
-        entity_type = self.__get_generic_type()
+        entity_type = self._get_generic_type()
         return entity_type(**kwargs)
 
     # ==============
@@ -267,7 +268,7 @@ class BaseRepository(Generic[T]):
     ) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
 
-    def __get_generic_type(self) -> Type[T]:
+    def _get_generic_type(self) -> Type[T]:
         """
         Get generic type of inherited BaseRepository:
 
@@ -279,3 +280,71 @@ class BaseRepository(Generic[T]):
         return cast(
             Type[T], typing_inspect.get_args(typing_inspect.get_generic_bases(self)[-1])[0]
         )
+
+
+class FakeRepo(BaseRepository[T]):
+    def __init__(self) -> None:
+        self.entities: List[T] = []
+        self.id_counter = 1
+
+    async def first(
+        self, *filters: BinaryExpression, orders: Optional[Columns] = None
+    ) -> Optional[T]:
+        return next(iter(self.entities), None)
+
+    async def get_by_ids(self, entity_ids: Sequence[int]) -> List[T]:
+        return [entity for entity in self.entities if entity.id in entity_ids]
+
+    async def get_by_id(self, entity_id: int) -> Optional[T]:
+        return next((entity for entity in self.entities if entity.id == entity_id), None)
+
+    async def get_or_create(
+        self, filters: Optional[List[BinaryExpression]] = None, defaults: Optional[Dict] = None
+    ) -> Tuple[T, Created]:
+        raise NotImplementedError()
+
+    async def get_all(
+        self, filters: Optional[List[BinaryExpression]] = None, orders: Optional[Columns] = None
+    ) -> List[T]:
+        return self.entities
+
+    async def get_all_ids(
+        self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
+    ) -> Sequence[int]:
+        return [cast(int, entity.id) for entity in self.entities]
+
+    async def exists(self, *filters: BinaryExpression) -> bool:
+        raise NotImplementedError()
+
+    async def insert(self, entity: T) -> T:
+        entity.id = self.id_counter
+        self.id_counter += 1
+        self.entities.append(entity)
+        return entity
+
+    async def insert_many(self, entities: List[T]) -> List[T]:
+        return [await self.insert(entity) for entity in entities]
+
+    async def update(self, entity: T) -> T:
+        return entity
+
+    async def update_partial(self, entity: T, **updated_values: Any) -> T:
+        for field, value in updated_values.items():
+            setattr(entity, field, value)
+        return entity
+
+    async def update_many(self, entities: List[T]) -> List[T]:
+        return entities
+
+    async def delete(self, *filters: Optional[BinaryExpression]) -> None:
+        raise NotImplementedError()
+
+    async def delete_by_id(self, entity_id: int) -> None:
+        self.entities = [entity for entity in self.entities if entity.id != entity_id]
+
+    async def delete_by_ids(self, entity_ids: Sequence[int]) -> None:
+        self.entities = [entity for entity in self.entities if entity.id not in entity_ids]
+
+    @asynccontextmanager
+    def execute_in_transaction(self) -> Any:
+        yield None
