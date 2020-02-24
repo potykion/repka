@@ -2,14 +2,14 @@ import datetime as dt
 import operator
 from contextlib import suppress
 from contextvars import ContextVar
-from typing import Optional, List, Any, Union
+from typing import Optional, List, Union
 
 import pytest
 import sqlalchemy as sa
 from aiopg.sa import create_engine, SAConnection
 from pydantic import validator
 
-from repka.api import BaseRepository, IdModel, db_connection_var, ConnectionVarMixin
+from repka.api import BaseRepository, IdModel
 
 # Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
 pytestmark = pytest.mark.asyncio
@@ -66,11 +66,8 @@ class TransactionRepo(BaseRepository[Transaction]):
         return sum_
 
 
-class TransactionRepoWithConnectionMixin(ConnectionVarMixin, BaseRepository[Transaction]):
+class TransactionRepoWithConnectionMixin(BaseRepository[Transaction]):
     table = transactions_table
-
-    def deserialize(self, **kwargs: Any) -> Transaction:
-        return Transaction(**kwargs)
 
 
 class UnionModel(IdModel):
@@ -288,18 +285,6 @@ async def test_exists_returns_false_if_not_exists(
     assert not await repo.exists(transactions_table.c.price + 9993 == transactions[0].price)
 
 
-async def test_connection_var_mixin_allows_to_create_repo_without_connection(
-    conn: SAConnection
-) -> None:
-    trans = Transaction(price=100)
-
-    db_connection_var.set(conn)
-    repo = TransactionRepoWithConnectionMixin()
-    trans = await repo.insert(trans)
-
-    assert trans.id
-
-
 async def test_connection_var_mixin_allows_to_create_repo_without_connection_if_connection_var_is_third_party(
     conn: SAConnection
 ) -> None:
@@ -373,11 +358,5 @@ async def test_error_in_transaction_inside_transaction_rollback(conn: SAConnecti
 
 
 async def test___get_generic_type(repo: TransactionRepo) -> None:
-    type_ = repo._BaseRepository__get_generic_type()  # type: ignore
-    assert type_ is Transaction
-
-
-async def test___get_generic_type_for_mixin() -> None:
-    repo = TransactionRepoWithConnectionMixin()
     type_ = repo._BaseRepository__get_generic_type()  # type: ignore
     assert type_ is Transaction

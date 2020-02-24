@@ -16,8 +16,6 @@ from repka.utils import model_to_primitive
 
 Created = bool
 
-db_connection_var: ContextVar[SAConnection] = ContextVar("db_connection")
-
 Columns = List[Union[sa.Column, str]]
 
 
@@ -28,41 +26,22 @@ class IdModel(BaseModel):
 T = TypeVar("T", bound=IdModel)
 
 
-class ConnectionMixin:
-    def __init__(self, connection: SAConnection) -> None:
-        self._connection = connection
-
-    @property
-    def connection(self) -> SAConnection:
-        return self._connection
-
-
-class ConnectionVarMixin:
-    """
-    Usage:
-    class TransactionRepo(ConnectionVarMixin, BaseRepository[Transaction]):
-        table = transactions_table
-
-        def deserialize(self, **kwargs: Any) -> Transaction:
-            return Transaction(**kwargs)
-
-    db_connection_var.set(conn)
-    repo = TransactionRepo()
-    trans = await repo.insert(trans)
-    """
-
-    def __init__(self, context_var: ContextVar[SAConnection] = db_connection_var):
-        self.context_var = context_var
-
-    @property
-    def connection(self) -> SAConnection:
-        return self.context_var.get()
-
-
-class BaseRepository(ConnectionMixin, Generic[T]):
+class BaseRepository(Generic[T]):
     """
     Execute sql-queries, convert sql-row-dicts to/from pydantic models
     """
+
+    def __init__(
+        self, connection_or_context_var: Union[SAConnection, ContextVar[SAConnection]]
+    ) -> None:
+        self.connection_or_context_var = connection_or_context_var
+
+    @property
+    def connection(self) -> SAConnection:
+        if isinstance(self.connection_or_context_var, SAConnection):
+            return self.connection_or_context_var
+        else:
+            return self.connection_or_context_var.get()
 
     # =============
     # CONFIGURATION
