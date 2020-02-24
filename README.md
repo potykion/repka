@@ -47,15 +47,11 @@ tasks_table = sa.Table(
 )
 
 # Define repository
-# You should inherit repka.api.BaseRepository 
-#   set sqlalchemy-table via table property and 
-#   set deserialize method which create pydantic model from kwargs 
+# You should inherit repka.api.BaseRepository and 
+#   set sqlalchemy-table via table property 
 # Kwargs is sql-row data returned by sqlalchemy  
 class TaskRepo(BaseRepository[Task]):
     table = tasks_table
-
-    def deserialize(self, **kwargs):
-        return Task(**kwargs)
 
 # To use the repository you should instantiate it with async sqlalchemy-connection
 db_url = "postgresql://postgres@localhost/test"
@@ -122,21 +118,13 @@ async with create_async_db_connection(db_url) as conn:
   
 - `repo.ignore_insert` - list of entity fields that will be ignored on insert and set after insert, useful for auto incrementing / default fields like dates or sequence numbers
 
-#### repka.api.ConnectionVarMixin
+#### ConnectionVar support
 
-ConnectionVarMixin allows you to create lazy-connection repositories with context vars
+You can create lazy-connection repositories with context vars
 
 ```python
 from contextvars import ContextVar
-from repka.api import ConnectionVarMixin, BaseRepository  
 from repka.utils import create_async_db_connection
-
-# Add mixin to repository 
-class TaskRepo(ConnectionVarMixin, BaseRepository[Task]):
-    table = tasks_table
-
-    def deserialize(self, **kwargs):
-        return Task(**kwargs)
 
 # Create context var and instantiate repository
 db_connection = ContextVar("db_connection")
