@@ -28,7 +28,7 @@ BaseRepository used to execute sql-queries (via [aiopg & sqlalchemy](https://git
 
 ```python
 import sqlalchemy as sa
-from repka.api import BaseRepository, IdModel
+from repka.api import AiopgRepository, IdModel
 from repka.utils import create_async_db_connection
 
 # Define pydantic model
@@ -50,7 +50,7 @@ tasks_table = sa.Table(
 # You should inherit repka.api.BaseRepository and 
 #   set sqlalchemy-table via table property 
 # Kwargs is sql-row data returned by sqlalchemy  
-class TaskRepo(BaseRepository[Task]):
+class TaskRepo(AiopgRepository[Task]):
     table = tasks_table
 
 # To use the repository you should instantiate it with async sqlalchemy-connection
@@ -143,7 +143,7 @@ async with create_async_db_connection(db_url) as conn:
 This kind of repository used to save/load json objects from file:
 
 ```python
-from repka.json_ import DictJsonRepo
+from repka.repositories.json_ import DictJsonRepo
 
 songs = [
     {"artist": "Pig Destroyer", "title": "Thumbsucker"}, 
