@@ -4,6 +4,8 @@
 
 Repository pattern implementation - isolate db manipulation from domain models
 
+Version: **0.10.1**
+
 ## Installation
 
 Via pip:
