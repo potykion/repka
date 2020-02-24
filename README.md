@@ -143,7 +143,7 @@ async with create_async_db_connection(db_url) as conn:
 This kind of repository used to save/load json objects from file:
 
 ```python
-from repka.repositories.json_ import DictJsonRepo
+from repka.api import DictJsonRepo
 
 songs = [
     {"artist": "Pig Destroyer", "title": "Thumbsucker"}, 
