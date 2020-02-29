@@ -49,3 +49,14 @@ class InsertQuery:
         if self.returning_columns:
             query = query.returning(*self.returning_columns)
         return query
+
+
+@dataclass
+class UpdateQuery:
+    table: Table
+    update_values: Mapping
+    id: int
+
+    def __call__(self) -> SqlAlchemyQuery:
+        query = self.table.update().values(self.update_values).where(self.table.c.id == self.id)
+        return query

@@ -1,6 +1,6 @@
 from abc import ABC
 from contextvars import ContextVar
-from typing import Optional, Sequence, List, cast, Any, Union
+from typing import Optional, Sequence, cast, Union
 
 from aiopg.sa import SAConnection
 from aiopg.sa.transaction import Transaction as SATransaction
@@ -30,49 +30,6 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
     @property
     def _query_executor(self) -> AsyncQueryExecutor:
         return AiopgQueryExecutor(self._connection)
-
-    # ==============
-    # UPDATE METHODS
-    # ==============
-
-    async def update(self, entity: GenericIdModel) -> GenericIdModel:
-        assert entity.id
-        query = (
-            self.table.update().values(self.serialize(entity)).where(self.table.c.id == entity.id)
-        )
-        await self._connection.execute(query)
-        return entity
-
-    async def update_partial(
-        self, entity: GenericIdModel, **updated_values: Any
-    ) -> GenericIdModel:
-        assert entity.id
-
-        for field, value in updated_values.items():
-            setattr(entity, field, value)
-
-        serialized_entity = self.serialize(entity)
-        serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
-
-        query = self.table.update().values(serialized_values).where(self.table.c.id == entity.id)
-        await self._connection.execute(query)
-
-        return entity
-
-    async def update_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
-        """
-        No way to update many in single query:
-        https://github.com/aio-libs/aiopg/issues/546
-
-        So update entities sequentially in transaction.
-        """
-        if not entities:
-            return entities
-
-        async with self.execute_in_transaction():
-            entities = [await self.update(entity) for entity in entities]
-
-        return entities
 
     # ==============
     # DELETE METHODS

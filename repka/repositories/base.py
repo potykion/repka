@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import Table
 from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
 
-from repka.repositories.queries import SelectQuery, Filters, Columns, InsertQuery
+from repka.repositories.queries import SelectQuery, Filters, Columns, InsertQuery, UpdateQuery
 from repka.repositories.query_executors import AsyncQueryExecutor
 from repka.utils import model_to_primitive
 
@@ -153,17 +153,29 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # UPDATE METHODS
     # ==============
 
-    @abstractmethod
     async def update(self, entity: GenericIdModel) -> GenericIdModel:
-        ...
+        assert entity.id
+        update_values = self.serialize(entity)
+        query = UpdateQuery(self.table, update_values, entity.id)()
+        await self._query_executor.update(query)
+        return entity
 
-    @abstractmethod
     async def update_partial(
         self, entity: GenericIdModel, **updated_values: Any
     ) -> GenericIdModel:
-        ...
+        assert entity.id
 
-    @abstractmethod
+        for field, value in updated_values.items():
+            setattr(entity, field, value)
+
+        serialized_entity = self.serialize(entity)
+        serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
+
+        query = UpdateQuery(self.table, serialized_values, entity.id)()
+        await self._query_executor.update(query)
+
+        return entity
+
     async def update_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
         """
         No way to update many in single query:
@@ -171,7 +183,13 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
         So update entities sequentially in transaction.
         """
-        ...
+        if not entities:
+            return entities
+
+        async with self.execute_in_transaction():
+            entities = [await self.update(entity) for entity in entities]
+
+        return entities
 
     # ==============
     # DELETE METHODS
