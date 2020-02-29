@@ -3,6 +3,7 @@ from typing import Optional, Mapping, Sequence, Any
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import RowProxy, ResultProxy
+from aiopg.sa.transaction import Transaction as SATransaction
 
 from repka.repositories.queries import SqlAlchemyQuery
 
@@ -28,6 +29,14 @@ class AsyncQueryExecutor:
     async def update(self, query: SqlAlchemyQuery) -> None:
         ...
 
+    @abstractmethod
+    async def delete(self, query: SqlAlchemyQuery) -> None:
+        ...
+
+    @abstractmethod
+    def execute_in_transaction(self) -> None:
+        ...
+
 
 class AiopgQueryExecutor(AsyncQueryExecutor):
     def __init__(self, connection: SAConnection) -> None:
@@ -51,3 +60,9 @@ class AiopgQueryExecutor(AsyncQueryExecutor):
 
     async def update(self, query: SqlAlchemyQuery) -> None:
         await self._connection.execute(query)
+
+    async def delete(self, query: SqlAlchemyQuery) -> None:
+        await self._connection.execute(query)
+
+    def execute_in_transaction(self) -> SATransaction:
+        return self._connection.begin()

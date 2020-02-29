@@ -8,7 +8,14 @@ from pydantic import BaseModel
 from sqlalchemy import Table
 from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
 
-from repka.repositories.queries import SelectQuery, Filters, Columns, InsertQuery, UpdateQuery
+from repka.repositories.queries import (
+    SelectQuery,
+    Filters,
+    Columns,
+    InsertQuery,
+    UpdateQuery,
+    DeleteQuery,
+)
 from repka.repositories.query_executors import AsyncQueryExecutor
 from repka.utils import model_to_primitive
 
@@ -195,25 +202,22 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # DELETE METHODS
     # ==============
 
-    @abstractmethod
     async def delete(self, *filters: Optional[BinaryExpression]) -> None:
-        ...
+        query = DeleteQuery(self.table, filters)()
+        await self._query_executor.delete(query)
 
-    @abstractmethod
     async def delete_by_id(self, entity_id: int) -> None:
-        ...
+        return await self.delete(self.table.c.id == entity_id)
 
-    @abstractmethod
     async def delete_by_ids(self, entity_ids: Sequence[int]) -> None:
-        ...
+        return await self.delete(self.table.c.id.in_(entity_ids))
 
     # ==============
     # OTHER METHODS
     # ==============
 
-    @abstractmethod
     def execute_in_transaction(self) -> Any:
-        ...
+        return self._query_executor.execute_in_transaction()
 
     # ==============
     # PROTECTED & PRIVATE METHODS

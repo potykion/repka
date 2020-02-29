@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Sequence, Union, Mapping
+from typing import Sequence, Union, Mapping, cast
 
 import sqlalchemy as sa
 from sqlalchemy import Table
@@ -25,16 +25,16 @@ class SelectQuery:
     def __call__(self) -> SqlAlchemyQuery:
         select_columns = self.select_columns if self.select_columns else [self.table]
         query = sa.select(select_columns)
-        query = self._apply_filters(query, self.filters)
-        query = self._apply_orders(query, self.orders)
+        query = self.apply_filters(query, self.filters)
+        query = self.apply_orders(query, self.orders)
         return query
 
-    def _apply_filters(
-        self, query: ClauseElement, filters: Sequence[BinaryExpression]
-    ) -> ClauseElement:
+    @staticmethod
+    def apply_filters(query: ClauseElement, filters: Sequence[BinaryExpression]) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
 
-    def _apply_orders(self, query: ClauseElement, orders: Columns) -> ClauseElement:
+    @staticmethod
+    def apply_orders(query: ClauseElement, orders: Columns) -> ClauseElement:
         return reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
 
 
@@ -59,4 +59,28 @@ class UpdateQuery:
 
     def __call__(self) -> SqlAlchemyQuery:
         query = self.table.update().values(self.update_values).where(self.table.c.id == self.id)
+        return query
+
+
+@dataclass
+class DeleteQuery:
+    table: Table
+    filters: Union[Filters, Sequence[None]]
+
+    def __call__(self) -> SqlAlchemyQuery:
+        if not len(self.filters):
+            raise ValueError(
+                """No filters set, are you sure you want to delete all table rows?
+            If so call the method with None:
+            repo.delete(None)"""
+            )
+
+        # None passed => delete all table rows
+        if self.filters[0] is None:
+            filters: Filters = tuple()
+        else:
+            filters = self.filters
+
+        query = self.table.delete()
+        query = SelectQuery.apply_filters(query, cast(Filters, filters))
         return query
