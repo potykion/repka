@@ -32,41 +32,6 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
         return AiopgQueryExecutor(self._connection)
 
     # ==============
-    # INSERT METHODS
-    # ==============
-
-    async def insert(self, entity: GenericIdModel) -> GenericIdModel:
-        # key should be removed manually (not in .serialize) due to compatibility
-        serialized = {
-            key: value
-            for key, value in self.serialize(entity).items()
-            if key not in self.ignore_insert
-        }
-        returning_columns = (
-            self.table.c.id,
-            *(getattr(self.table.c, col) for col in self.ignore_insert),
-        )
-        query = self.table.insert().values(serialized).returning(*returning_columns)
-
-        rows = await self._connection.execute(query)
-        row = await rows.first()
-
-        entity.id = row.id
-        for col in self.ignore_insert:
-            setattr(entity, col, getattr(row, col))
-
-        return entity
-
-    async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
-        if not entities:
-            return entities
-
-        async with self.execute_in_transaction():
-            entities = [await self.insert(entity) for entity in entities]
-
-        return entities
-
-    # ==============
     # UPDATE METHODS
     # ==============
 

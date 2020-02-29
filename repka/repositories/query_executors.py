@@ -20,6 +20,10 @@ class AsyncQueryExecutor:
     async def fetch_val(self, query: SqlAlchemyQuery) -> Any:
         ...
 
+    @abstractmethod
+    async def insert(self, query: SqlAlchemyQuery) -> Mapping:
+        ...
+
 
 class AiopgQueryExecutor(AsyncQueryExecutor):
     def __init__(self, connection: SAConnection) -> None:
@@ -35,3 +39,8 @@ class AiopgQueryExecutor(AsyncQueryExecutor):
 
     async def fetch_val(self, query: SqlAlchemyQuery) -> Any:
         return await self._connection.scalar(query)
+
+    async def insert(self, query: SqlAlchemyQuery) -> Mapping:
+        rows = await self._connection.execute(query)
+        row = await rows.first()
+        return row
