@@ -1,21 +1,18 @@
-from abc import abstractmethod
+from abc import ABC
 from contextvars import ContextVar
 from functools import reduce
-from typing import Optional, Generic, Dict, Sequence, List, cast, Tuple, Any, Union, Type
+from typing import Optional, Dict, Sequence, List, cast, Tuple, Any, Union
 
 import sqlalchemy as sa
-import typing_inspect
 from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
 from aiopg.sa.transaction import Transaction as SATransaction
-from sqlalchemy import Table
-from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
+from sqlalchemy.sql.elements import BinaryExpression
 
-from repka.repositories.base import GenericIdModel, Columns, Created
-from repka.utils import model_to_primitive
+from repka.repositories.base import GenericIdModel, Columns, Created, AsyncBaseRepo
 
 
-class AiopgRepository(Generic[GenericIdModel]):
+class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
     """
     Execute sql-queries, convert sql-row-dicts to/from pydantic models
     """
@@ -31,34 +28,6 @@ class AiopgRepository(Generic[GenericIdModel]):
             return self.connection_or_context_var
         else:
             return self.connection_or_context_var.get()
-
-    # =============
-    # CONFIGURATION
-    # =============
-
-    @property
-    @abstractmethod
-    def table(self) -> Table:
-        pass
-
-    @property
-    def ignore_insert(self) -> Sequence[str]:
-        """
-        Columns will be ignored on insert while serialization
-        These columns will be set after insert
-
-        See following tests for example:
-         - tests.test_api.test_insert_sets_ignored_column
-         - tests.test_api.test_insert_many_inserts_sequence_rows
-        """
-        return []
-
-    def serialize(self, entity: GenericIdModel) -> Dict:
-        return model_to_primitive(entity, without_id=True)
-
-    def deserialize(self, **kwargs: Any) -> GenericIdModel:
-        entity_type = self._get_generic_type()
-        return entity_type(**kwargs)
 
     # ==============
     # SELECT METHODS
@@ -248,26 +217,3 @@ class AiopgRepository(Generic[GenericIdModel]):
 
     def execute_in_transaction(self) -> SATransaction:
         return self.connection.begin()
-
-    # ==============
-    # PROTECTED & PRIVATE METHODS
-    # ==============
-
-    def _apply_filters(
-        self, query: ClauseElement, filters: Sequence[BinaryExpression]
-    ) -> ClauseElement:
-        return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
-
-    def _get_generic_type(self) -> Type[GenericIdModel]:
-        """
-        Get generic type of inherited BaseRepository:
-
-        >>> class TransactionRepo(AiopgRepository[Transaction]):
-        ...     table = transactions_table
-        ... # doctest: +SKIP
-        >>> assert TransactionRepo().__get_generic_type() is Transaction # doctest: +SKIP
-        """
-        return cast(
-            Type[GenericIdModel],
-            typing_inspect.get_args(typing_inspect.get_generic_bases(self)[-1])[0],
-        )

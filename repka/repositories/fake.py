@@ -1,13 +1,13 @@
+from abc import ABC
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Sequence, List, cast, Tuple, Any
 
 from sqlalchemy.sql.elements import BinaryExpression
 
-from repka.repositories.aiopg_ import AiopgRepository
-from repka.repositories.base import GenericIdModel, Columns, Created
+from repka.repositories.base import GenericIdModel, Columns, Created, AsyncBaseRepo
 
 
-class FakeRepo(AiopgRepository[GenericIdModel]):
+class FakeRepo(AsyncBaseRepo[GenericIdModel], ABC):
     def __init__(self) -> None:
         self.entities: List[GenericIdModel] = []
         self.id_counter = 1
@@ -75,3 +75,16 @@ class FakeRepo(AiopgRepository[GenericIdModel]):
     @asynccontextmanager
     def execute_in_transaction(self) -> Any:
         yield None
+
+
+# class deleteme:
+#     ...
+#
+# class InheritedFakeRepo(FakeRepo[deleteme]):
+#     pass
+#
+#
+# if __name__ == '__main__':
+#     repo = InheritedFakeRepo()
+#     type_ = repo._get_generic_type()
+#     s = "As"
