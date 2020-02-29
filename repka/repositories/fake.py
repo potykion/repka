@@ -5,6 +5,7 @@ from typing import Optional, Dict, Sequence, List, cast, Tuple, Any
 from sqlalchemy.sql.elements import BinaryExpression
 
 from repka.repositories.base import GenericIdModel, Columns, Created, AsyncBaseRepo
+from repka.repositories.queries import Filters
 
 
 class FakeRepo(AsyncBaseRepo[GenericIdModel], ABC):
@@ -24,12 +25,12 @@ class FakeRepo(AsyncBaseRepo[GenericIdModel], ABC):
         return next((entity for entity in self.entities if entity.id == entity_id), None)
 
     async def get_or_create(
-        self, filters: Optional[List[BinaryExpression]] = None, defaults: Optional[Dict] = None
+        self, filters: Filters = None, defaults: Dict = None
     ) -> Tuple[GenericIdModel, Created]:
         raise NotImplementedError()
 
     async def get_all(
-        self, filters: Optional[List[BinaryExpression]] = None, orders: Optional[Columns] = None
+        self, filters: Filters = None, orders: Columns = None
     ) -> List[GenericIdModel]:
         return self.entities
 

@@ -1,15 +1,13 @@
 from abc import ABC
 from contextvars import ContextVar
-from functools import reduce
-from typing import Optional, Dict, Sequence, List, cast, Tuple, Any, Union
+from typing import Optional, Sequence, List, cast, Any, Union
 
-import sqlalchemy as sa
 from aiopg.sa import SAConnection
-from aiopg.sa.result import ResultProxy
 from aiopg.sa.transaction import Transaction as SATransaction
 from sqlalchemy.sql.elements import BinaryExpression
 
-from repka.repositories.base import GenericIdModel, Columns, Created, AsyncBaseRepo
+from repka.repositories.base import GenericIdModel, AsyncBaseRepo
+from repka.repositories.query_executors import AsyncQueryExecutor, AiopgQueryExecutor
 
 
 class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
@@ -23,89 +21,15 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
         self.connection_or_context_var = connection_or_context_var
 
     @property
-    def connection(self) -> SAConnection:
+    def _connection(self) -> SAConnection:
         if isinstance(self.connection_or_context_var, SAConnection):
             return self.connection_or_context_var
         else:
             return self.connection_or_context_var.get()
 
-    # ==============
-    # SELECT METHODS
-    # ==============
-
-    async def first(
-        self, *filters: BinaryExpression, orders: Optional[Columns] = None
-    ) -> Optional[GenericIdModel]:
-        orders = orders or []
-
-        query = self.table.select()
-        query = reduce(lambda query_, filter_: query_.where(filter_), filters, query)
-        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
-
-        rows: ResultProxy = await self.connection.execute(query)
-        row = await rows.first()
-        if row:
-            return cast(GenericIdModel, self.deserialize(**row))
-
-        return None
-
-    async def get_by_ids(self, entity_ids: Sequence[int]) -> List[GenericIdModel]:
-        return await self.get_all(filters=[self.table.c.id.in_(entity_ids)])
-
-    async def get_by_id(self, entity_id: int) -> Optional[GenericIdModel]:
-        return await self.first(self.table.c.id == entity_id)
-
-    async def get_or_create(
-        self, filters: Optional[List[BinaryExpression]] = None, defaults: Optional[Dict] = None
-    ) -> Tuple[GenericIdModel, Created]:
-        filters = filters or []
-        defaults = defaults or {}
-
-        entity = await self.first(*filters)
-        if entity:
-            return entity, False
-
-        entity = self.deserialize(**defaults)
-        entity = await self.insert(entity)
-        return entity, True
-
-    async def get_all(
-        self, filters: Optional[List[BinaryExpression]] = None, orders: Optional[Columns] = None
-    ) -> List[GenericIdModel]:
-        filters = filters or []
-        orders = orders or []
-
-        query = self.table.select()
-        query = self._apply_filters(query, filters)
-        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
-
-        rows = await self.connection.execute(query)
-        return [cast(GenericIdModel, self.deserialize(**row)) for row in rows]
-
-    async def get_all_ids(
-        self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
-    ) -> Sequence[int]:
-        """
-        Same as get_all() but returns only ids.
-        :param filters: List of conditions
-        :param orders: List of orders
-        :return: List of ids
-        """
-        filters = filters or []
-        orders = orders or []
-
-        query = sa.select([self.table.c.id])
-        query = self._apply_filters(query, filters)
-        query = reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
-
-        rows = await self.connection.execute(query)
-        return [row.id for row in rows]
-
-    async def exists(self, *filters: BinaryExpression) -> bool:
-        query = sa.select([sa.func.count("*")])
-        query = self._apply_filters(query, filters)
-        result = await self.connection.scalar(query)
-        return bool(result)
+    @property
+    def _query_executor(self) -> AsyncQueryExecutor:
+        return AiopgQueryExecutor(self._connection)
 
     # ==============
     # INSERT METHODS
@@ -124,7 +48,7 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
         )
         query = self.table.insert().values(serialized).returning(*returning_columns)
 
-        rows = await self.connection.execute(query)
+        rows = await self._connection.execute(query)
         row = await rows.first()
 
         entity.id = row.id
@@ -151,7 +75,7 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
         query = (
             self.table.update().values(self.serialize(entity)).where(self.table.c.id == entity.id)
         )
-        await self.connection.execute(query)
+        await self._connection.execute(query)
         return entity
 
     async def update_partial(
@@ -166,7 +90,7 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
         serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
 
         query = self.table.update().values(serialized_values).where(self.table.c.id == entity.id)
-        await self.connection.execute(query)
+        await self._connection.execute(query)
 
         return entity
 
@@ -203,7 +127,7 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
 
         query = self.table.delete()
         query = self._apply_filters(query, cast(Sequence[BinaryExpression], filters))
-        await self.connection.execute(query)
+        await self._connection.execute(query)
 
     async def delete_by_id(self, entity_id: int) -> None:
         return await self.delete(self.table.c.id == entity_id)
@@ -216,4 +140,4 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
     # ==============
 
     def execute_in_transaction(self) -> SATransaction:
-        return self.connection.begin()
+        return self._connection.begin()

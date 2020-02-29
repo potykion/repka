@@ -62,7 +62,7 @@ class TransactionRepo(BaseRepository[Transaction]):
 
     async def sum(self) -> int:
         query = sa.select([sa.func.sum(transactions_table.c.price)])
-        sum_ = await self.connection.scalar(query)
+        sum_ = await self._connection.scalar(query)
         return sum_
 
 

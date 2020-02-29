@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABC
 from functools import reduce
-from typing import TypeVar, Optional, List, Union, Sequence, Dict, Any, Tuple, Type, cast, Generic
+from typing import TypeVar, Optional, List, Sequence, Dict, Any, Tuple, Type, cast, Generic
 
 import sqlalchemy as sa
 import typing_inspect
@@ -8,11 +8,11 @@ from pydantic import BaseModel
 from sqlalchemy import Table
 from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
 
+from repka.repositories.queries import SelectQuery, Filters, Columns
+from repka.repositories.query_executors import AsyncQueryExecutor
 from repka.utils import model_to_primitive
 
 Created = bool
-
-Columns = List[Union[sa.Column, str]]
 
 
 class IdModel(BaseModel):
@@ -55,37 +55,46 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         entity_type = self._get_generic_type()
         return entity_type(**kwargs)
 
+    @property
+    @abstractmethod
+    def _query_executor(self) -> AsyncQueryExecutor:
+        ...
+
     # ==============
     # SELECT METHODS
     # ==============
 
-    @abstractmethod
     async def first(
-        self, *filters: BinaryExpression, orders: Optional[Columns] = None
+        self, *filters: BinaryExpression, orders: Columns = None
     ) -> Optional[GenericIdModel]:
-        ...
+        query = SelectQuery(self.table, filters, orders or [])()
+        row = await self._query_executor.fetch_one(query)
+        return self.deserialize(**row) if row else None
 
-    @abstractmethod
-    async def get_by_ids(self, entity_ids: Sequence[int]) -> List[GenericIdModel]:
-        ...
-
-    @abstractmethod
     async def get_by_id(self, entity_id: int) -> Optional[GenericIdModel]:
-        ...
+        return await self.first(self.table.c.id == entity_id)
 
-    @abstractmethod
     async def get_or_create(
-        self, filters: Optional[List[BinaryExpression]] = None, defaults: Optional[Dict] = None
+        self, filters: Filters = None, defaults: Dict = None
     ) -> Tuple[GenericIdModel, Created]:
-        ...
+        entity = await self.first(*(filters or []))
+        if entity:
+            return entity, False
 
-    @abstractmethod
+        entity = self.deserialize(**(defaults or {}))
+        entity = await self.insert(entity)
+        return entity, True
+
     async def get_all(
-        self, filters: Optional[List[BinaryExpression]] = None, orders: Optional[Columns] = None
+        self, filters: Filters = None, orders: Columns = None
     ) -> List[GenericIdModel]:
-        ...
+        query = SelectQuery(self.table, filters or [], orders or [])()
+        rows = await self._query_executor.fetch_all(query)
+        return [cast(GenericIdModel, self.deserialize(**row)) for row in rows]
 
-    @abstractmethod
+    async def get_by_ids(self, entity_ids: Sequence[int]) -> List[GenericIdModel]:
+        return await self.get_all(filters=[self.table.c.id.in_(entity_ids)])
+
     async def get_all_ids(
         self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
     ) -> Sequence[int]:
@@ -95,11 +104,16 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         :param orders: List of orders
         :return: List of ids
         """
-        ...
+        query = SelectQuery(
+            self.table, filters or [], orders or [], select_columns=[self.table.c.id]
+        )()
+        rows = await self._query_executor.fetch_all(query)
+        return [row["id"] for row in rows]
 
-    @abstractmethod
     async def exists(self, *filters: BinaryExpression) -> bool:
-        ...
+        query = SelectQuery(self.table, filters, select_columns=[sa.func.count("*")])()
+        result = await self._query_executor.fetch_val(query)
+        return bool(result)
 
     # ==============
     # INSERT METHODS
@@ -170,6 +184,9 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         self, query: ClauseElement, filters: Sequence[BinaryExpression]
     ) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
+
+    def _apply_orders(self, query: ClauseElement, orders: Columns) -> ClauseElement:
+        return reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
 
     def _get_generic_type(self) -> Type[GenericIdModel]:
         """
