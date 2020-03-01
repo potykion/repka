@@ -1,4 +1,3 @@
-import json
 from contextlib import asynccontextmanager
 from typing import Sequence, Dict, Set, Union
 
@@ -20,7 +19,7 @@ def model_to_primitive(
     if without_id:
         exclude_set.add("id")
 
-    data: Dict = json.loads(model.json(exclude=exclude_set))
+    data = model.dict(exclude=exclude_set)
     return data
 
 

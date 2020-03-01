@@ -20,11 +20,7 @@ def model() -> MyModel:
 
 def test_model_to_primitive(model: MyModel) -> None:
     dict_ = model_to_primitive(model)
-    assert dict_ == {
-        "id": model.id,
-        "title": model.title,
-        "created": model.created.strftime("%Y-%m-%dT%H:%M:%S"),
-    }
+    assert dict_ == {"id": model.id, "title": model.title, "created": model.created}
 
 
 def test_model_to_primitive_excludes_id(model: MyModel) -> None:

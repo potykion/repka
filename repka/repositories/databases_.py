@@ -1,6 +1,6 @@
 from contextvars import ContextVar
 from abc import ABC
-from typing import Union, Mapping, Any, Sequence, Optional
+from typing import Union, Mapping, Any, Sequence, Optional, cast
 
 from databases import Database
 from databases.core import Transaction
@@ -47,7 +47,7 @@ class DatabasesQueryExecutor(AsyncQueryExecutor):
         return await self.connection.fetch_val(query)
 
     async def insert(self, query: SqlAlchemyQuery) -> Mapping:
-        return await self.connection.execute(query)
+        return cast(Mapping, await self.connection.fetch_one(query))
 
     async def update(self, query: SqlAlchemyQuery) -> None:
         await self.connection.execute(query)

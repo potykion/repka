@@ -159,7 +159,9 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         return [row["id"] for row in rows]
 
     async def exists(self, *filters: BinaryExpression) -> bool:
-        query = SelectQuery(self.table, filters, select_columns=[sa.func.count("*")])()
+        query = SelectQuery(
+            self.table, filters, select_columns=[sa.func.count(self.table.c.id)]
+        )()
         result = await self._query_executor.fetch_val(query)
         return bool(result)
 
@@ -184,7 +186,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
         entity.id = row["id"]
         for col in self.ignore_insert:
-            setattr(entity, col, getattr(row, col))
+            setattr(entity, col, row[col])
 
         return entity
 
