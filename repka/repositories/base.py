@@ -66,7 +66,7 @@ class AsyncQueryExecutor:
         ...
 
     @abstractmethod
-    def execute_in_transaction(self) -> None:
+    def execute_in_transaction(self) -> Any:
         ...
 
 
