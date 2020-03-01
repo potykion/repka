@@ -1,12 +1,23 @@
 from abc import abstractmethod, ABC
-from functools import reduce
-from typing import TypeVar, Optional, List, Sequence, Dict, Any, Tuple, Type, cast, Generic
+from typing import (
+    TypeVar,
+    Optional,
+    List,
+    Sequence,
+    Dict,
+    Any,
+    Tuple,
+    Type,
+    cast,
+    Generic,
+    Mapping,
+)
 
 import sqlalchemy as sa
 import typing_inspect
 from pydantic import BaseModel
 from sqlalchemy import Table
-from sqlalchemy.sql.elements import BinaryExpression, ClauseElement
+from sqlalchemy.sql.elements import BinaryExpression
 
 from repka.repositories.queries import (
     SelectQuery,
@@ -15,8 +26,8 @@ from repka.repositories.queries import (
     InsertQuery,
     UpdateQuery,
     DeleteQuery,
+    SqlAlchemyQuery,
 )
-from repka.repositories.query_executors import AsyncQueryExecutor
 from repka.utils import model_to_primitive
 
 Created = bool
@@ -27,6 +38,36 @@ class IdModel(BaseModel):
 
 
 GenericIdModel = TypeVar("GenericIdModel", bound=IdModel)
+
+
+class AsyncQueryExecutor:
+    @abstractmethod
+    async def fetch_one(self, query: SqlAlchemyQuery) -> Optional[Mapping]:
+        ...
+
+    @abstractmethod
+    async def fetch_all(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
+        ...
+
+    @abstractmethod
+    async def fetch_val(self, query: SqlAlchemyQuery) -> Any:
+        ...
+
+    @abstractmethod
+    async def insert(self, query: SqlAlchemyQuery) -> Mapping:
+        ...
+
+    @abstractmethod
+    async def update(self, query: SqlAlchemyQuery) -> None:
+        ...
+
+    @abstractmethod
+    async def delete(self, query: SqlAlchemyQuery) -> None:
+        ...
+
+    @abstractmethod
+    def execute_in_transaction(self) -> None:
+        ...
 
 
 class AsyncBaseRepo(Generic[GenericIdModel], ABC):
@@ -222,14 +263,6 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
     # PROTECTED & PRIVATE METHODS
     # ==============
-
-    def _apply_filters(
-        self, query: ClauseElement, filters: Sequence[BinaryExpression]
-    ) -> ClauseElement:
-        return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
-
-    def _apply_orders(self, query: ClauseElement, orders: Columns) -> ClauseElement:
-        return reduce(lambda query_, order_by: query_.order_by(order_by), orders, query)
 
     def _get_generic_type(self) -> Type[GenericIdModel]:
         """
