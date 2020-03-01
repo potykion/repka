@@ -1,5 +1,5 @@
 """
-Same as test_api.py for now
+Same as test_api.py except `conn` fixture & DatabasesRepository inheritance
 """
 
 import datetime as dt
@@ -14,8 +14,6 @@ from databases import Database
 from pydantic import validator
 
 from repka.api import IdModel
-
-
 from repka.repositories.databases_ import DatabasesRepository
 
 
@@ -103,11 +101,6 @@ async def conn(db_url: str) -> AsyncGenerator[Database, None]:
 
     async with Database(db_url) as conn_:
         yield conn_
-
-    # # create async connection
-    # async with create_engine(db_url) as engine:
-    #     async with engine.acquire() as conn_:
-    #         yield conn_
 
 
 @pytest.fixture()
