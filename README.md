@@ -118,7 +118,7 @@ async with create_async_db_connection(db_url) as conn:
   
 - `repo.ignore_insert` - list of entity fields that will be ignored on insert and set after insert, useful for auto incrementing / default fields like dates or sequence numbers
 
-#### ConnectionVar support
+#### ContextVar support
 
 You can create lazy-connection repositories with context vars
 
@@ -143,7 +143,7 @@ async with create_async_db_connection(db_url) as conn:
 This kind of repository used to save/load json objects from file:
 
 ```python
-from repka.api import DictJsonRepo
+from repka.json_ import DictJsonRepo
 
 songs = [
     {"artist": "Pig Destroyer", "title": "Thumbsucker"}, 

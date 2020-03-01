@@ -4,7 +4,7 @@ import os
 from _pytest.pytester import Testdir
 from typing import Sequence, Dict
 
-from repka.repositories.json_ import DictJsonRepo
+from repka.json_ import DictJsonRepo
 
 
 def test_dict_json_repo_reads_json_file_as_list_of_dicts(testdir: Testdir) -> None:

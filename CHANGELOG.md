@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased - 2020-03-01
+
+### Added 
+
+- repka.api.DatabasesRepository - repo that uses [databases](https://github.com/encode/databases) lib allowing to use repka on mysql/sqlite dbs
+- repka.api.FakeRepo - repo that uses list of entities instead of real database (draft, features like sqlalchemy-filters are not supported)
+
+### Changed 
+
+- repka.utils.model_to_primitive - returns dict of python-primitives (e.g. datetime.date is not converted to string)
+- Architecture changes: queries building in separate classes; query executor class - abstrasction for aiopg & databases
+
+### Removed 
+
+- repka.api.ConnectionVarMixin - removed, repo supports both connection in context-var-connection in single contructor
+
 ## 0.10.1 - 2020-02-11
 
 ### Fixed
