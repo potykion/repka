@@ -20,6 +20,11 @@ def model() -> MyModel:
 
 def test_model_to_primitive(model: MyModel) -> None:
     dict_ = model_to_primitive(model)
+    assert dict_ == {"id": model.id, "title": model.title, "created": '2020-01-04T00:00:00'}
+
+
+def test_model_to_primitive_with_python_primitives(model: MyModel) -> None:
+    dict_ = model_to_primitive(model, keep_python_primitives=True)
     assert dict_ == {"id": model.id, "title": model.title, "created": model.created}
 
 

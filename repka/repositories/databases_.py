@@ -1,12 +1,13 @@
 from contextvars import ContextVar
 from abc import ABC
-from typing import Union, Mapping, Any, Sequence, Optional, cast
+from typing import Union, Mapping, Any, Sequence, Optional, cast, Dict
 
 from databases import Database
 from databases.core import Transaction
 
 from repka.repositories.base import AsyncBaseRepo, GenericIdModel, AsyncQueryExecutor
 from repka.repositories.queries import SqlAlchemyQuery
+from repka.utils import model_to_primitive
 
 
 class DatabasesRepository(AsyncBaseRepo[GenericIdModel], ABC):
@@ -31,6 +32,9 @@ class DatabasesRepository(AsyncBaseRepo[GenericIdModel], ABC):
     @property
     def _query_executor(self) -> AsyncQueryExecutor:
         return DatabasesQueryExecutor(self._connection)
+
+    def serialize(self, entity: GenericIdModel) -> Dict:
+        return model_to_primitive(entity, without_id=True, keep_python_primitives=True)
 
 
 class DatabasesQueryExecutor(AsyncQueryExecutor):

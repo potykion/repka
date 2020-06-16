@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 from typing import Sequence, Dict, Set, Union
 
@@ -6,20 +7,29 @@ from pydantic import BaseModel
 
 
 def model_to_primitive(
-    model: BaseModel, without_id: bool = False, exclude: Sequence[str] = None
+    model: BaseModel,
+    without_id: bool = False,
+    exclude: Sequence[str] = None,
+    keep_python_primitives: bool = False,
 ) -> Dict:
     """
     Convert pydantic-{model} to dict transforming complex types to primitives (e.g. datetime to str)
     :param model: Pydantic model
     :param without_id: Remove id key from result dict
     :param exclude: List of field to exclude from result dict
+    :param keep_python_primitives: If True result dict will have python-primitives (e.g. datetime, Decimal)
     :return: Dict with fields from given model
     """
     exclude_set: Set[Union[int, str]] = set(exclude or [])
     if without_id:
         exclude_set.add("id")
 
-    data = model.dict(exclude=exclude_set)
+    data: Dict
+    if keep_python_primitives:
+        data = model.dict(exclude=exclude_set)
+    else:
+        data = json.loads(model.json(exclude=exclude_set))
+
     return data
 
 
