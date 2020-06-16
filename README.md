@@ -4,7 +4,7 @@
 
 Repository pattern implementation - isolate db manipulation from domain models
 
-Version: **1.0.0**
+Version: **1.1.0**
 
 ## Installation
 
