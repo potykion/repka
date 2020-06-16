@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2020-06-16
+
+### Added
+
+- `repka.utils.model_to_primitive:keep_python_primitives` - if True result dict will have python-primitives (e.g. datetime, Decimal) (#32) 
+
 ## 1.0.0 - 2020-03-01
 
 ### Added 
