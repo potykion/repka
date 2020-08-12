@@ -26,7 +26,7 @@ from repka.repositories.queries import (
     InsertQuery,
     UpdateQuery,
     DeleteQuery,
-    SqlAlchemyQuery,
+    SqlAlchemyQuery, InsertManyQuery,
 )
 from repka.utils import model_to_primitive
 
@@ -55,6 +55,10 @@ class AsyncQueryExecutor:
 
     @abstractmethod
     async def insert(self, query: SqlAlchemyQuery) -> Mapping:
+        ...
+
+    @abstractmethod
+    async def insert_many(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
         ...
 
     @abstractmethod
@@ -170,32 +174,28 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
 
     async def insert(self, entity: GenericIdModel) -> GenericIdModel:
-        # key should be removed manually (not in .serialize) due to compatibility
-        serialized = {
-            key: value
-            for key, value in self.serialize(entity).items()
-            if key not in self.ignore_insert
-        }
-        returning_columns = (
-            self.table.c.id,
-            *(getattr(self.table.c, col) for col in self.ignore_insert),
-        )
+        serialized = self._serialize_for_insertion(entity)
+        returning_columns = self._get_insert_returning_columns()
         query = InsertQuery(self.table, serialized, returning_columns)()
 
         row = await self._query_executor.insert(query)
 
-        entity.id = row["id"]
-        for col in self.ignore_insert:
-            setattr(entity, col, row[col])
-
-        return entity
+        return self._set_fields_from_ignore_insert(entity, row)
 
     async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
         if not entities:
             return entities
 
-        async with self.execute_in_transaction():
-            entities = [await self.insert(entity) for entity in entities]
+        serialized = [
+            self._serialize_for_insertion(entity)
+            for entity in entities
+        ]
+        returning_columns = self._get_insert_returning_columns()
+        query = InsertManyQuery(self.table, serialized, returning_columns)()
+
+        rows = await self._query_executor.insert_many(query)
+        for entity, row in zip(entities, rows):
+            self._set_fields_from_ignore_insert(entity, row)
 
         return entities
 
@@ -279,3 +279,23 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
             Type[GenericIdModel],
             typing_inspect.get_args(typing_inspect.get_generic_bases(self)[-1])[0],
         )
+
+    def _serialize_for_insertion(self, entity: GenericIdModel) -> Dict[str, Any]:
+        # key should be removed manually (not in .serialize) due to compatibility
+        return {
+            key: value
+            for key, value in self.serialize(entity).items()
+            if key not in self.ignore_insert
+        }
+
+    def _get_insert_returning_columns(self) -> Columns:
+        return (
+            self.table.c.id,
+            *(getattr(self.table.c, col) for col in self.ignore_insert),
+        )
+
+    def _set_fields_from_ignore_insert(self, entity: GenericIdModel, row: Mapping) -> GenericIdModel:
+        entity.id = row["id"]
+        for col in self.ignore_insert:
+            setattr(entity, col, row[col])
+        return entity

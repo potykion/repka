@@ -52,6 +52,19 @@ class InsertQuery:
 
 
 @dataclass
+class InsertManyQuery:
+    table: Table
+    insert_values: Sequence[Mapping]
+    returning_columns: Columns = field(default_factory=list)
+
+    def __call__(self) -> SqlAlchemyQuery:
+        query = self.table.insert().values(self.insert_values)
+        if self.returning_columns:
+            query = query.returning(*self.returning_columns)
+        return query
+
+
+@dataclass
 class UpdateQuery:
     table: Table
     update_values: Mapping
