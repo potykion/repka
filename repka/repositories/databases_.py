@@ -53,6 +53,9 @@ class DatabasesQueryExecutor(AsyncQueryExecutor):
     async def insert(self, query: SqlAlchemyQuery) -> Mapping:
         return cast(Mapping, await self.connection.fetch_one(query))
 
+    async def insert_many(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
+        return await self.connection.fetch_all(query)
+
     async def update(self, query: SqlAlchemyQuery) -> None:
         await self.connection.execute(query)
 

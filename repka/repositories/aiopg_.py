@@ -52,6 +52,9 @@ class AiopgQueryExecutor(AsyncQueryExecutor):
         row = await rows.first()
         return row
 
+    async def insert_many(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
+        return await self._connection.execute(query)
+
     async def update(self, query: SqlAlchemyQuery) -> None:
         await self._connection.execute(query)
 

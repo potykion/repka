@@ -49,12 +49,15 @@ class Task(IdModel):
     priority = 0
 
 
+seq = sa.Sequence("priority_seq", metadata=metadata)
+
+
 tasks_table = sa.Table(
     "tasks",
     metadata,
     sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
     sa.Column("title", sa.String),
-    sa.Column("priority", sa.Integer, sa.Sequence("priority_seq", metadata=metadata)),
+    sa.Column("priority", sa.Integer, server_default=seq.next_value()),
 )
 
 
