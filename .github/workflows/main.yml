@@ -1,0 +1,32 @@
+# poetry install && pre-commit run -a
+
+name: Python package
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      uses: abatilo/actions-poetry@v1.8.1
+      with:
+        python_version: ${{ matrix.python-version }}
+        poetry_version: 1.0
+        args: install
+    - name: QA
+      uses: abatilo/actions-poetry@v1.8.1
+      with:
+        python_version: ${{ matrix.python-version }}
+        poetry_version: 1.0
+        args: run pre-commit run -a
