@@ -447,21 +447,15 @@ async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_fi
     assert res.seq_field == 60
 
 
-async def test_insert_many_handles_ignore_default_correctly(
-    conn: SAConnection
-) -> None:
+async def test_insert_many_handles_ignore_default_correctly(conn: SAConnection) -> None:
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert_many(
-        [
-            DefaultFieldsModel(a=30),
-            DefaultFieldsModel(seq_field=10),
-            DefaultFieldsModel()
-        ]
+        [DefaultFieldsModel(a=30), DefaultFieldsModel(seq_field=10), DefaultFieldsModel()]
     )
 
     assert res[0].a == 30
     assert res[1].a == 5
     assert res[2].a == 5
 
-    assert res[1].seq_field==10
+    assert res[1].seq_field == 10
