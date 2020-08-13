@@ -95,6 +95,29 @@ class UnionModelRepo(DatabasesRepository[UnionModel]):
     table = int_models_table
 
 
+class DefaultFieldsModel(IdModel):
+    a: int = 0
+    b: Optional[str]
+    seq_field: int = 0
+
+
+default_fields_seq = sa.Sequence("default_fields_seq", metadata=metadata)
+
+default_fields_table = sa.Table(
+    "default_fields",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("a", sa.Integer, server_default="5"),
+    sa.Column("b", sa.String, server_default="aue"),
+    sa.Column("seq_field", sa.Integer, server_default=default_fields_seq.next_value()),
+)
+
+
+class DefaultFieldsRepo(DatabasesRepository[DefaultFieldsModel]):
+    table = default_fields_table
+    ignore_default = ["a", "b", "seq_field"]
+
+
 @pytest.fixture()
 async def conn(db_url: str) -> AsyncGenerator[Database, None]:
     # recreate all tables
@@ -367,3 +390,63 @@ async def test_error_in_transaction_inside_transaction_rollback(conn: Database) 
 async def test___get_generic_type(repo: TransactionRepo) -> None:
     type_ = repo._get_generic_type()
     assert type_ is Transaction
+
+
+async def test_insert_does_not_insert_ignore_default_fields_with_simple_default_value(
+    conn: Database
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel())
+
+    assert res.a == 5
+
+
+async def test_insert_does_not_insert_ignore_default_fields_with_default_value_if_field_is_optional(
+    conn: Database
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel())
+
+    assert res.b == "aue"
+
+
+async def test_insert_does_not_insert_ignore_default_fields_with_sequence_column(
+    conn: Database
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel())
+
+    assert res.seq_field == 1
+
+
+async def test_insert_inserts_ignore_default_fields_with_non_default_value(
+    conn: Database
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel(a=60))
+
+    assert res.a == 60
+
+
+async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_field_is_optional(
+    conn: Database
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel(b="ssjv"))
+
+    assert res.b == "ssjv"
+
+
+async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_field_is_sequence(
+    conn: Database
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel(seq_field=60))
+
+    assert res.seq_field == 60
