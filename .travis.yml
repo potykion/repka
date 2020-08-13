@@ -3,6 +3,10 @@ language: python
 python:
   - 3.7
 
+branches:
+  only:
+    - master
+
 # install poetry and dependencies
 before_install:
   - pip install poetry
