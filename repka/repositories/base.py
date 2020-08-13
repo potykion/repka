@@ -26,7 +26,8 @@ from repka.repositories.queries import (
     InsertQuery,
     UpdateQuery,
     DeleteQuery,
-    SqlAlchemyQuery, InsertManyQuery,
+    SqlAlchemyQuery,
+    InsertManyQuery,
 )
 from repka.utils import model_to_primitive
 
@@ -186,10 +187,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         if not entities:
             return entities
 
-        serialized = [
-            self._serialize_for_insertion(entity)
-            for entity in entities
-        ]
+        serialized = [self._serialize_for_insertion(entity) for entity in entities]
         returning_columns = self._get_insert_returning_columns()
         query = InsertManyQuery(self.table, serialized, returning_columns)()
 
@@ -289,12 +287,11 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         }
 
     def _get_insert_returning_columns(self) -> Columns:
-        return (
-            self.table.c.id,
-            *(getattr(self.table.c, col) for col in self.ignore_insert),
-        )
+        return (self.table.c.id, *(getattr(self.table.c, col) for col in self.ignore_insert))
 
-    def _set_fields_from_ignore_insert(self, entity: GenericIdModel, row: Mapping) -> GenericIdModel:
+    def _set_fields_from_ignore_insert(
+        self, entity: GenericIdModel, row: Mapping
+    ) -> GenericIdModel:
         entity.id = row["id"]
         for col in self.ignore_insert:
             setattr(entity, col, row[col])
