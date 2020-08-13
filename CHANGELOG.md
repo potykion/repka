@@ -1,10 +1,18 @@
+<!-- https://keepachangelog.com/en/1.0.0/ -->
+
 # Changelog
+
+### Unreleased
+
+### Changed
+
+- `repka.repositories.base.AsyncBaseRepo.insert_many` - perform single query instead of multiple (#33 by @Paul-Ilyin)
 
 ## 1.1.0 - 2020-06-16
 
 ### Added
 
-- `repka.utils.model_to_primitive:keep_python_primitives` - if True result dict will have python-primitives (e.g. datetime, Decimal) (#32) 
+- `repka.utils.model_to_primitive:keep_python_primitives` - if True result dict will have python-primitives (e.g. datetime, Decimal) (#32 by potykion) 
 
 ## 1.0.0 - 2020-03-01
 
@@ -26,14 +34,14 @@
 
 ### Fixed
 
-- repka.api.BaseRepository.__get_generic_type - fix type extraction for mixin-inheritance (#28)
+- repka.api.BaseRepository.__get_generic_type - fix type extraction for mixin-inheritance (#28 by potykion)
 
 ## 0.10.0 - 2020-01-08
 
 ### Changed
 
-- repka.api.BaseRepository.deserialize - no need to override in inheritors (#22)
-- repka.api.BaseRepository.delete - to delete all table rows you should pass (#23)
+- repka.api.BaseRepository.deserialize - no need to override in inheritors (#22 by potykion)
+- repka.api.BaseRepository.delete - to delete all table rows you should pass (#23 by potykion)
 - repka.json_.DictJsonRepo.read_or_write_default - return tuple of data and existence
 - Detailed docs
 
@@ -41,14 +49,14 @@
 
 ### Added 
 
-- repka.utils.create_async_db_connection - async context manager used to create async db connections (#20) 
+- repka.utils.create_async_db_connection - async context manager used to create async db connections (#20 by potykion) 
 - repka.api.BaseRepository.get_all_ids - list all entities ids (#19)
 
 ## 0.8.0 - 2019-12-22
 
 ### Added
 
-- repka.api.BaseRepository.ignore_insert - Columns will be ignored on insert while serialization, these columns will be set after insert (#17)
+- repka.api.BaseRepository.ignore_insert - Columns will be ignored on insert while serialization, these columns will be set after insert (#17 by potykion)
 - repka.json_.DictJsonRepo - typings
 
 ## 0.7.2 - 2019-11-20
@@ -61,7 +69,7 @@
 
 ### Fixed
 
-- repka.api.BaseRepository.insert_many inserts entities sequentially in transaction (#16)
+- repka.api.BaseRepository.insert_many inserts entities sequentially in transaction (#16 by potykion)
 
 ## 0.7.0 - 2019-10-13
 
