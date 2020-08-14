@@ -38,27 +38,6 @@ transactions_table = sa.Table(
 )
 
 
-class Task(IdModel):
-    title: str
-    priority = 0
-
-
-seq = sa.Sequence("priority_seq", metadata=metadata)
-
-tasks_table = sa.Table(
-    "tasks",
-    metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-    sa.Column("title", sa.String),
-    sa.Column("priority", sa.Integer, server_default=seq.next_value()),
-)
-
-
-class TaskRepo(BaseRepository[Task]):
-    table = tasks_table
-    ignore_insert = ("priority",)
-
-
 class TransactionRepo(BaseRepository[Transaction]):
     table = transactions_table
 
@@ -127,11 +106,6 @@ async def conn(db_url: str) -> SAConnection:
 @pytest.fixture()
 async def repo(conn: SAConnection) -> TransactionRepo:
     return TransactionRepo(conn)
-
-
-@pytest.fixture()
-async def task_repo(conn: SAConnection) -> TaskRepo:
-    return TaskRepo(conn)
 
 
 @pytest.fixture()
@@ -330,19 +304,6 @@ async def test_first_returns_transaction_with_greatest_price(
     trans = await repo.first(orders=[-transactions_table.c.price])
     assert trans
     assert trans.price == max(trans.price for trans in transactions)
-
-
-async def test_insert_many_inserts_sequence_rows(task_repo: TaskRepo) -> None:
-    tasks = [Task(title="task 1"), Task(title="task 2")]
-    tasks = await task_repo.insert_many(tasks)
-    assert tasks[0].priority == 1
-    assert tasks[1].priority == 2
-
-
-async def test_insert_sets_ignored_column(task_repo: TaskRepo) -> None:
-    task = Task(title="task 1", priority=1337)
-    task = await task_repo.insert(task)
-    assert task.priority == 1
 
 
 async def test_get_all_ids(repo: TransactionRepo, transactions: List[Transaction]) -> None:

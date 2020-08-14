@@ -91,18 +91,6 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         pass
 
     @property
-    def ignore_insert(self) -> Sequence[str]:
-        """
-        Columns will be ignored on insert while serialization
-        These columns will be set after insert
-
-        See following tests for example:
-         - tests.test_api.test_insert_sets_ignored_column
-         - tests.test_api.test_insert_many_inserts_sequence_rows
-        """
-        return []
-
-    @property
     def ignore_default(self) -> Sequence[str]:
         """
         Columns will be inserted only if their values are not equal to default values of
@@ -297,10 +285,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         }
 
     def _get_insert_returning_columns(self) -> Columns:
-        return (
-            self.table.c.id,
-            *(getattr(self.table.c, col) for col in {*self.ignore_insert, *self.ignore_default}),
-        )
+        return (self.table.c.id, *(getattr(self.table.c, col) for col in self.ignore_default))
 
     def _set_ignored_fields(self, entity: GenericIdModel, row: Mapping) -> GenericIdModel:
         entity.id = row["id"]
@@ -310,6 +295,5 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
     def _get_ignored_fields(self, entity: GenericIdModel) -> Set[str]:
         return {
-            *self.ignore_insert,
-            *(field for field in self.ignore_default if is_field_equal_to_default(entity, field)),
+            field for field in self.ignore_default if is_field_equal_to_default(entity, field)
         }
