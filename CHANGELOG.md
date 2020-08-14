@@ -2,11 +2,20 @@
 
 # Changelog
 
-### Unreleased
+### Unreleased - 2020-08-14
+
+### Added
+
+- `repka.repositories.base.AsyncBaseRepo.ignore_default` - ignore fields which value equals to default (#38 by @Paul-Ilyin)
 
 ### Changed
 
 - `repka.repositories.base.AsyncBaseRepo.insert_many` - perform single query instead of multiple (#33 by @Paul-Ilyin)
+- `databases` as optional dependency (`poetry install -E databases` to install with `databases` dependency) (#40 by @Paul-Ilyin)
+
+### Removed
+
+- **Breaking change!** `repka.repositories.base.AsyncBaseRepo.ignore_insert` removed (#38 by @Paul-Ilyin)
 
 ## 1.1.0 - 2020-06-16
 
