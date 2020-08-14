@@ -2,6 +2,12 @@
 
 # Changelog
 
+## 2.0.1 - 2020-08-14
+
+### Fixed
+
+- No import error if `databases` is not installed (#41 by @Paul-Ilyin) 
+
 ## 2.0.0 - 2020-08-14
 
 ### Added
