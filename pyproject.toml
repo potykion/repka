@@ -19,7 +19,7 @@ pydantic = ">=0.31,<1.2"
 sqlalchemy = "^1.3"
 aiopg = "^0.16.0"
 typing_inspect = "^0.5.0"
-databases = "^0.2.6"
+databases = {version = "^0.2.6", optional = true}
 asyncpg = "^0.20.1"
 
 [tool.poetry.dev-dependencies]
@@ -31,6 +31,9 @@ pre-commit = "^1.17"
 mypy = "^0.720.0"
 flake8 = "^3.7"
 bump2version = "^0.5.10"
+
+[tool.poetry.extras]
+databases = ["databases"]
 
 [build-system]
 requires = ["poetry>=0.12"]
