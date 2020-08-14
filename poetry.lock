@@ -526,7 +526,7 @@ testing = ["jaraco.itertools", "func-timeout"]
 databases = ["databases"]
 
 [metadata]
-content-hash = "3813e2451decd438d888aa92d7b619103b8c680c06e669c574bbc6d1a596db56"
+content-hash = "b2b251bf9c2a0e07ea98f1f0629bfc71207b7418f5e594aebc9d6f3c5f36ea26"
 python-versions = "^3.7"
 
 [metadata.files]
