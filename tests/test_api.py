@@ -38,27 +38,6 @@ transactions_table = sa.Table(
 )
 
 
-class Task(IdModel):
-    title: str
-    priority = 0
-
-
-seq = sa.Sequence("priority_seq", metadata=metadata)
-
-tasks_table = sa.Table(
-    "tasks",
-    metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-    sa.Column("title", sa.String),
-    sa.Column("priority", sa.Integer, server_default=seq.next_value()),
-)
-
-
-class TaskRepo(BaseRepository[Task]):
-    table = tasks_table
-    ignore_insert = ("priority",)
-
-
 class TransactionRepo(BaseRepository[Transaction]):
     table = transactions_table
 
@@ -88,6 +67,29 @@ class UnionModelRepo(BaseRepository[UnionModel]):
     table = int_models_table
 
 
+class DefaultFieldsModel(IdModel):
+    a: int = 0
+    b: Optional[str]
+    seq_field: int = 0
+
+
+default_fields_seq = sa.Sequence("default_fields_seq", metadata=metadata)
+
+default_fields_table = sa.Table(
+    "default_fields",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("a", sa.Integer, default=5),
+    sa.Column("b", sa.String, default="aue"),
+    sa.Column("seq_field", sa.Integer, server_default=default_fields_seq.next_value()),
+)
+
+
+class DefaultFieldsRepo(BaseRepository[DefaultFieldsModel]):
+    table = default_fields_table
+    ignore_default = ["a", "b", "seq_field"]
+
+
 @pytest.fixture()
 async def conn(db_url: str) -> SAConnection:
     # recreate all tables
@@ -104,11 +106,6 @@ async def conn(db_url: str) -> SAConnection:
 @pytest.fixture()
 async def repo(conn: SAConnection) -> TransactionRepo:
     return TransactionRepo(conn)
-
-
-@pytest.fixture()
-async def task_repo(conn: SAConnection) -> TaskRepo:
-    return TaskRepo(conn)
 
 
 @pytest.fixture()
@@ -309,19 +306,6 @@ async def test_first_returns_transaction_with_greatest_price(
     assert trans.price == max(trans.price for trans in transactions)
 
 
-async def test_insert_many_inserts_sequence_rows(task_repo: TaskRepo) -> None:
-    tasks = [Task(title="task 1"), Task(title="task 2")]
-    tasks = await task_repo.insert_many(tasks)
-    assert tasks[0].priority == 1
-    assert tasks[1].priority == 2
-
-
-async def test_insert_sets_ignored_column(task_repo: TaskRepo) -> None:
-    task = Task(title="task 1", priority=1337)
-    task = await task_repo.insert(task)
-    assert task.priority == 1
-
-
 async def test_get_all_ids(repo: TransactionRepo, transactions: List[Transaction]) -> None:
     ids = await repo.get_all_ids()
     assert ids == [trans.id for trans in transactions]
@@ -362,3 +346,77 @@ async def test_error_in_transaction_inside_transaction_rollback(conn: SAConnecti
 async def test___get_generic_type(repo: TransactionRepo) -> None:
     type_ = repo._get_generic_type()
     assert type_ is Transaction
+
+
+async def test_insert_does_not_insert_ignore_default_fields_with_simple_default_value(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel())
+
+    assert res.a == 5
+
+
+async def test_insert_does_not_insert_ignore_default_fields_with_default_value_if_field_is_optional(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel())
+
+    assert res.b == "aue"
+
+
+async def test_insert_does_not_insert_ignore_default_fields_with_sequence_column(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel())
+
+    assert res.seq_field == 1
+
+
+async def test_insert_inserts_ignore_default_fields_with_non_default_value(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel(a=60))
+
+    assert res.a == 60
+
+
+async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_field_is_optional(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel(b="ssjv"))
+
+    assert res.b == "ssjv"
+
+
+async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_field_is_sequence(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert(DefaultFieldsModel(seq_field=60))
+
+    assert res.seq_field == 60
+
+
+async def test_insert_many_handles_ignore_default_correctly(conn: SAConnection) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert_many(
+        [DefaultFieldsModel(a=30), DefaultFieldsModel(seq_field=10), DefaultFieldsModel()]
+    )
+
+    assert res[0].a == 30
+    assert res[1].a == 5
+    assert res[2].a == 5
+
+    assert res[1].seq_field == 10

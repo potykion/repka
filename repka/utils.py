@@ -39,3 +39,7 @@ async def create_async_db_connection(db_url: str) -> SAConnection:
     async with create_engine(db_url) as engine:
         async with engine.acquire() as connection:
             yield connection
+
+
+def is_field_equal_to_default(entity: BaseModel, field_name: str) -> bool:
+    return getattr(entity, field_name) == entity.__fields__[field_name].default

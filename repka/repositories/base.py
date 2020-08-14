@@ -11,6 +11,7 @@ from typing import (
     cast,
     Generic,
     Mapping,
+    Set,
 )
 
 import sqlalchemy as sa
@@ -29,7 +30,7 @@ from repka.repositories.queries import (
     SqlAlchemyQuery,
     InsertManyQuery,
 )
-from repka.utils import model_to_primitive
+from repka.utils import model_to_primitive, is_field_equal_to_default
 
 Created = bool
 
@@ -90,14 +91,11 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         pass
 
     @property
-    def ignore_insert(self) -> Sequence[str]:
+    def ignore_default(self) -> Sequence[str]:
         """
-        Columns will be ignored on insert while serialization
+        Columns will be inserted only if their values are not equal to default values of
+        corresponding models' fields
         These columns will be set after insert
-
-        See following tests for example:
-         - tests.test_api.test_insert_sets_ignored_column
-         - tests.test_api.test_insert_many_inserts_sequence_rows
         """
         return []
 
@@ -181,7 +179,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
         row = await self._query_executor.insert(query)
 
-        return self._set_fields_from_ignore_insert(entity, row)
+        return self._set_ignored_fields(entity, row)
 
     async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
         if not entities:
@@ -193,7 +191,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
         rows = await self._query_executor.insert_many(query)
         for entity, row in zip(entities, rows):
-            self._set_fields_from_ignore_insert(entity, row)
+            self._set_ignored_fields(entity, row)
 
         return entities
 
@@ -283,16 +281,19 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         return {
             key: value
             for key, value in self.serialize(entity).items()
-            if key not in self.ignore_insert
+            if key not in self._get_ignored_fields(entity)
         }
 
     def _get_insert_returning_columns(self) -> Columns:
-        return (self.table.c.id, *(getattr(self.table.c, col) for col in self.ignore_insert))
+        return (self.table.c.id, *(getattr(self.table.c, col) for col in self.ignore_default))
 
-    def _set_fields_from_ignore_insert(
-        self, entity: GenericIdModel, row: Mapping
-    ) -> GenericIdModel:
+    def _set_ignored_fields(self, entity: GenericIdModel, row: Mapping) -> GenericIdModel:
         entity.id = row["id"]
-        for col in self.ignore_insert:
+        for col in self._get_ignored_fields(entity):
             setattr(entity, col, row[col])
         return entity
+
+    def _get_ignored_fields(self, entity: GenericIdModel) -> Set[str]:
+        return {
+            field for field in self.ignore_default if is_field_equal_to_default(entity, field)
+        }
