@@ -81,7 +81,7 @@ default_fields_table = sa.Table(
     sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
     sa.Column("a", sa.Integer, default=5),
     sa.Column("b", sa.String, default="aue"),
-    sa.Column("seq_field", sa.Integer, server_default=default_fields_seq.next_value()),
+    sa.Column("seq_field", sa.Integer, default=default_fields_seq.next_value()),
 )
 
 
@@ -412,11 +412,13 @@ async def test_insert_many_handles_ignore_default_correctly(conn: SAConnection) 
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert_many(
-        [DefaultFieldsModel(a=30), DefaultFieldsModel(seq_field=10), DefaultFieldsModel()]
+        [
+            DefaultFieldsModel(a=30, seq_field=999),
+            DefaultFieldsModel(),
+            DefaultFieldsModel(seq_field=9999),
+        ]
     )
 
-    assert res[0].a == 30
-    assert res[1].a == 5
-    assert res[2].a == 5
-
-    assert res[1].seq_field == 10
+    assert res == await repo.get_all()
+    assert res[0].seq_field == 999
+    assert res[2].seq_field == 9999
