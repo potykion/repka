@@ -116,7 +116,8 @@ async with create_async_db_connection(db_url) as conn:
       await repo.insert(Task(title="New task"))
     ``` 
   
-- `repo.ignore_insert` - list of entity fields that will be ignored on insert and set after insert, useful for auto incrementing / default fields like dates or sequence numbers
+- `repo.ignore_default` - list of entity fields that will be ignored on insert and set after insert if they equal to default field value. 
+Useful for auto incrementing / default fields like dates or sequence numbers
 
 #### ContextVar support
 
