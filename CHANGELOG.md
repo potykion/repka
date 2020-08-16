@@ -2,6 +2,12 @@
 
 # Changelog
 
+## Unreleased - 2020-08-16
+
+### Changed
+
+- `repka.repositories.base.AsyncBaseRepo.insert_many` raises error in case of inconsistent `ignore_default` field values (#45 by @Paul-Ilyin) 
+
 ## 2.0.1 - 2020-08-14
 
 ### Fixed
