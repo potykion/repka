@@ -354,8 +354,10 @@ async def test_insert_does_not_insert_ignore_default_fields_with_simple_default_
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert(DefaultFieldsModel())
+    inserted = (await repo.get_all())[0]
 
     assert res.a == 5
+    assert res == inserted
 
 
 async def test_insert_does_not_insert_ignore_default_fields_with_default_value_if_field_is_optional(
@@ -364,8 +366,10 @@ async def test_insert_does_not_insert_ignore_default_fields_with_default_value_i
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert(DefaultFieldsModel())
+    inserted = (await repo.get_all())[0]
 
     assert res.b == "aue"
+    assert res == inserted
 
 
 async def test_insert_does_not_insert_ignore_default_fields_with_sequence_column(
@@ -374,8 +378,10 @@ async def test_insert_does_not_insert_ignore_default_fields_with_sequence_column
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert(DefaultFieldsModel())
+    inserted = (await repo.get_all())[0]
 
     assert res.seq_field == 1
+    assert res == inserted
 
 
 async def test_insert_inserts_ignore_default_fields_with_non_default_value(
@@ -384,8 +390,10 @@ async def test_insert_inserts_ignore_default_fields_with_non_default_value(
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert(DefaultFieldsModel(a=60))
+    inserted = (await repo.get_all())[0]
 
     assert res.a == 60
+    assert res == inserted
 
 
 async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_field_is_optional(
@@ -394,8 +402,10 @@ async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_fi
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert(DefaultFieldsModel(b="ssjv"))
+    inserted = (await repo.get_all())[0]
 
     assert res.b == "ssjv"
+    assert res == inserted
 
 
 async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_field_is_sequence(
@@ -404,19 +414,60 @@ async def test_insert_inserts_ignore_default_fields_with_non_default_value_if_fi
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert(DefaultFieldsModel(seq_field=60))
+    inserted = (await repo.get_all())[0]
 
     assert res.seq_field == 60
+    assert res == inserted
 
 
-async def test_insert_many_handles_ignore_default_correctly(conn: SAConnection) -> None:
+async def test_insert_many_inserts_ignore_default_sequence_fields_with_default_values_correctly(
+    conn: SAConnection
+) -> None:
     repo = DefaultFieldsRepo(conn)
 
     res = await repo.insert_many(
-        [DefaultFieldsModel(a=30), DefaultFieldsModel(seq_field=10), DefaultFieldsModel()]
+        [DefaultFieldsModel(), DefaultFieldsModel(), DefaultFieldsModel()]
     )
+    inserted = await repo.get_all()
 
-    assert res[0].a == 30
-    assert res[1].a == 5
-    assert res[2].a == 5
+    assert res[0].seq_field == 1
+    assert res[1].seq_field == 2
+    assert res[2].seq_field == 3
 
-    assert res[1].seq_field == 10
+    assert res == inserted
+
+
+async def test_insert_many_inserts_ignore_default_sequence_fields_without_default_values_correctly(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    res = await repo.insert_many(
+        [
+            DefaultFieldsModel(seq_field=5),
+            DefaultFieldsModel(seq_field=9),
+            DefaultFieldsModel(seq_field=7),
+        ]
+    )
+    inserted = await repo.get_all()
+
+    assert res[0].seq_field == 5
+    assert res[1].seq_field == 9
+    assert res[2].seq_field == 7
+
+    assert res == inserted
+
+
+async def test_insert_many_raises_value_error_if_inconsistent_server_default_fields_passed(
+    conn: SAConnection
+) -> None:
+    repo = DefaultFieldsRepo(conn)
+
+    with pytest.raises(ValueError):
+        await repo.insert_many(
+            [
+                DefaultFieldsModel(seq_field=5),
+                DefaultFieldsModel(),
+                DefaultFieldsModel(seq_field=7),
+            ]
+        )

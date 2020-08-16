@@ -182,9 +182,14 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         return self._set_ignored_fields(entity, row)
 
     async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
+        """
+        Inserts many entities with a single query.
+        raises ValueError if some entities' fields from self.ignore_default have default values
+        while other fields have non-default values if
+        """
         if not entities:
             return entities
-
+        self._check_server_defaults(entities)
         serialized = [self._serialize_for_insertion(entity) for entity in entities]
         returning_columns = self._get_insert_returning_columns()
         query = InsertManyQuery(self.table, serialized, returning_columns)()
@@ -283,6 +288,24 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
             for key, value in self.serialize(entity).items()
             if key not in self._get_ignored_fields(entity)
         }
+
+    def _check_server_defaults(self, entities: Sequence[GenericIdModel]) -> None:
+        server_default_fields = [
+            col.key
+            for col in self.table.c
+            if col.server_default is not None and col.key in self.ignore_default
+        ]
+        for server_default_field in server_default_fields:
+            first = is_field_equal_to_default(next(iter(entities)), server_default_field)
+            is_consistent = all(
+                is_field_equal_to_default(entity, server_default_field) == first
+                for entity in entities
+            )
+            if not is_consistent:
+                raise ValueError(
+                    "All fields from ignore default should either be equal to default values or not be "
+                    f"equal. Got inconsistency with {server_default_field} field"
+                )
 
     def _get_insert_returning_columns(self) -> Columns:
         return (self.table.c.id, *(getattr(self.table.c, col) for col in self.ignore_default))
