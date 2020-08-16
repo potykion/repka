@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from dataclasses import dataclass
 from typing import (
     TypeVar,
     Optional,
@@ -108,7 +109,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
     @property
     @abstractmethod
-    def _query_executor(self) -> AsyncQueryExecutor:
+    def query_executor(self) -> AsyncQueryExecutor:
         ...
 
     # ==============
@@ -119,7 +120,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         self, *filters: BinaryExpression, orders: Columns = None
     ) -> Optional[GenericIdModel]:
         query = SelectQuery(self.table, filters, orders or [])()
-        row = await self._query_executor.fetch_one(query)
+        row = await self.query_executor.fetch_one(query)
         return self.deserialize(**row) if row else None
 
     async def get_by_id(self, entity_id: int) -> Optional[GenericIdModel]:
@@ -140,7 +141,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         self, filters: Filters = None, orders: Columns = None
     ) -> List[GenericIdModel]:
         query = SelectQuery(self.table, filters or [], orders or [])()
-        rows = await self._query_executor.fetch_all(query)
+        rows = await self.query_executor.fetch_all(query)
         return [cast(GenericIdModel, self.deserialize(**row)) for row in rows]
 
     async def get_by_ids(self, entity_ids: Sequence[int]) -> List[GenericIdModel]:
@@ -158,14 +159,14 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         query = SelectQuery(
             self.table, filters or [], orders or [], select_columns=[self.table.c.id]
         )()
-        rows = await self._query_executor.fetch_all(query)
+        rows = await self.query_executor.fetch_all(query)
         return [row["id"] for row in rows]
 
     async def exists(self, *filters: BinaryExpression) -> bool:
         query = SelectQuery(
             self.table, filters, select_columns=[sa.func.count(self.table.c.id)]
         )()
-        result = await self._query_executor.fetch_val(query)
+        result = await self.query_executor.fetch_val(query)
         return bool(result)
 
     # ==============
@@ -173,32 +174,10 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
 
     async def insert(self, entity: GenericIdModel) -> GenericIdModel:
-        serialized = self._serialize_for_insertion(entity)
-        returning_columns = self._get_insert_returning_columns()
-        query = InsertQuery(self.table, serialized, returning_columns)()
-
-        row = await self._query_executor.insert(query)
-
-        return self._set_ignored_fields(entity, row)
+        return await InsertImpl(self).insert(entity)
 
     async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
-        """
-        Inserts many entities with a single query.
-        raises ValueError if some entities' fields from self.ignore_default have default values
-        while other fields have non-default values if
-        """
-        if not entities:
-            return entities
-        self._check_server_defaults(entities)
-        serialized = [self._serialize_for_insertion(entity) for entity in entities]
-        returning_columns = self._get_insert_returning_columns()
-        query = InsertManyQuery(self.table, serialized, returning_columns)()
-
-        rows = await self._query_executor.insert_many(query)
-        for entity, row in zip(entities, rows):
-            self._set_ignored_fields(entity, row)
-
-        return entities
+        return await InsertManyImpl(self).insert_many(entities)
 
     # ==============
     # UPDATE METHODS
@@ -208,7 +187,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         assert entity.id
         update_values = self.serialize(entity)
         query = UpdateQuery(self.table, update_values, entity.id)()
-        await self._query_executor.update(query)
+        await self.query_executor.update(query)
         return entity
 
     async def update_partial(
@@ -223,7 +202,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
 
         query = UpdateQuery(self.table, serialized_values, entity.id)()
-        await self._query_executor.update(query)
+        await self.query_executor.update(query)
 
         return entity
 
@@ -248,7 +227,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
     async def delete(self, *filters: Optional[BinaryExpression]) -> None:
         query = DeleteQuery(self.table, filters)()
-        await self._query_executor.delete(query)
+        await self.query_executor.delete(query)
 
     async def delete_by_id(self, entity_id: int) -> None:
         return await self.delete(self.table.c.id == entity_id)
@@ -261,7 +240,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
 
     def execute_in_transaction(self) -> Any:
-        return self._query_executor.execute_in_transaction()
+        return self.query_executor.execute_in_transaction()
 
     # ==============
     # PROTECTED & PRIVATE METHODS
@@ -281,19 +260,79 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
             typing_inspect.get_args(typing_inspect.get_generic_bases(self)[-1])[0],
         )
 
+
+@dataclass
+class InsertImpl:
+    repo: AsyncBaseRepo
+
+    async def insert(self, entity: GenericIdModel) -> GenericIdModel:
+        query = InsertQuery(
+            self.repo.table, self._serialize_for_insertion(entity), self.insert_returning_columns
+        )()
+
+        row = await self.repo.query_executor.insert(query)
+
+        return self._set_ignored_fields(entity, row)
+
+    @property
+    def insert_returning_columns(self) -> Columns:
+        return (
+            self.repo.table.c.id,
+            *(getattr(self.repo.table.c, col) for col in self.repo.ignore_default),
+        )
+
     def _serialize_for_insertion(self, entity: GenericIdModel) -> Dict[str, Any]:
         # key should be removed manually (not in .serialize) due to compatibility
         return {
             key: value
-            for key, value in self.serialize(entity).items()
+            for key, value in self.repo.serialize(entity).items()
             if key not in self._get_ignored_fields(entity)
         }
+
+    def _set_ignored_fields(self, entity: GenericIdModel, row: Mapping) -> GenericIdModel:
+        entity.id = row["id"]
+        for col in self._get_ignored_fields(entity):
+            setattr(entity, col, row[col])
+        return entity
+
+    def _get_ignored_fields(self, entity: GenericIdModel) -> Set[str]:
+        return {
+            field
+            for field in self.repo.ignore_default
+            if is_field_equal_to_default(entity, field)
+        }
+
+
+class InsertManyImpl(InsertImpl):
+    async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
+        """
+        Inserts many entities with a single query.
+        raises ValueError if some entities' fields from self.ignore_default have default values
+        while other fields have non-default values if
+        """
+        if not entities:
+            return entities
+
+        self._check_server_defaults(entities)
+
+        query = InsertManyQuery(
+            self.repo.table,
+            [self._serialize_for_insertion(entity) for entity in entities],
+            self.insert_returning_columns,
+        )()
+
+        rows = await self.repo.query_executor.insert_many(query)
+
+        for entity, row in zip(entities, rows):
+            self._set_ignored_fields(entity, row)
+
+        return entities
 
     def _check_server_defaults(self, entities: Sequence[GenericIdModel]) -> None:
         server_default_fields = [
             col.key
-            for col in self.table.c
-            if col.server_default is not None and col.key in self.ignore_default
+            for col in self.repo.table.c
+            if col.server_default is not None and col.key in self.repo.ignore_default
         ]
         for server_default_field in server_default_fields:
             first = is_field_equal_to_default(next(iter(entities)), server_default_field)
@@ -306,17 +345,3 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
                     "All fields from ignore default should either be equal to default values or not be "
                     f"equal. Got inconsistency with {server_default_field} field"
                 )
-
-    def _get_insert_returning_columns(self) -> Columns:
-        return (self.table.c.id, *(getattr(self.table.c, col) for col in self.ignore_default))
-
-    def _set_ignored_fields(self, entity: GenericIdModel, row: Mapping) -> GenericIdModel:
-        entity.id = row["id"]
-        for col in self._get_ignored_fields(entity):
-            setattr(entity, col, row[col])
-        return entity
-
-    def _get_ignored_fields(self, entity: GenericIdModel) -> Set[str]:
-        return {
-            field for field in self.ignore_default if is_field_equal_to_default(entity, field)
-        }

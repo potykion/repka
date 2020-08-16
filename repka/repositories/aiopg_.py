@@ -28,7 +28,7 @@ class AiopgRepository(AsyncBaseRepo[GenericIdModel], ABC):
             return self.connection_or_context_var.get()
 
     @property
-    def _query_executor(self) -> AsyncQueryExecutor:
+    def query_executor(self) -> AsyncQueryExecutor:
         return AiopgQueryExecutor(self._connection)
 
 

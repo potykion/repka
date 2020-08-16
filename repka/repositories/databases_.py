@@ -30,7 +30,7 @@ class DatabasesRepository(AsyncBaseRepo[GenericIdModel], ABC):
         return connection
 
     @property
-    def _query_executor(self) -> AsyncQueryExecutor:
+    def query_executor(self) -> AsyncQueryExecutor:
         return DatabasesQueryExecutor(self._connection)
 
     def serialize(self, entity: GenericIdModel) -> Dict:

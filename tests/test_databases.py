@@ -48,7 +48,7 @@ class TransactionRepo(DatabasesRepository[Transaction]):
     table = transactions_table
 
     async def sum(self) -> int:
-        return await self._query_executor.fetch_val(
+        return await self.query_executor.fetch_val(
             sa.select([sa.func.sum(transactions_table.c.price)])
         )
 
