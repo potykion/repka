@@ -471,3 +471,12 @@ async def test_insert_many_raises_value_error_if_inconsistent_server_default_fie
                 DefaultFieldsModel(seq_field=7),
             ]
         )
+
+
+async def test_update_values(repo: TransactionRepo) -> None:
+    await repo.insert(Transaction(price=100))
+    await repo.insert(Transaction(price=200))
+
+    await repo.update_values({"price": 300}, filters=[repo.table.c.price == 100])
+
+    assert {t.price for t in await repo.get_all()} == {300, 200}

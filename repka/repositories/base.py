@@ -186,7 +186,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     async def update(self, entity: GenericIdModel) -> GenericIdModel:
         assert entity.id
         update_values = self.serialize(entity)
-        query = UpdateQuery(self.table, update_values, entity.id)()
+        query = UpdateQuery.by_id(entity.id, self.table, update_values)()
         await self.query_executor.update(query)
         return entity
 
@@ -201,7 +201,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         serialized_entity = self.serialize(entity)
         serialized_values = {key: serialized_entity[key] for key in updated_values.keys()}
 
-        query = UpdateQuery(self.table, serialized_values, entity.id)()
+        query = UpdateQuery.by_id(entity.id, self.table, serialized_values)()
         await self.query_executor.update(query)
 
         return entity
@@ -220,6 +220,11 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
             entities = [await self.update(entity) for entity in entities]
 
         return entities
+
+    async def update_values(self, values: dict, filters: Filters) -> None:
+        """Perform sql-like update"""
+        query = UpdateQuery(self.table, values, filters)()
+        await self.query_executor.update(query)
 
     # ==============
     # DELETE METHODS

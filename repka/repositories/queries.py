@@ -68,11 +68,19 @@ class InsertManyQuery:
 class UpdateQuery:
     table: Table
     update_values: Mapping
-    id: int
+    filters: Filters
 
     def __call__(self) -> SqlAlchemyQuery:
-        query = self.table.update().values(self.update_values).where(self.table.c.id == self.id)
+        query = self.table.update().values(self.update_values).where(sa.and_(*self.filters))
         return query
+
+    @classmethod
+    def by_id(
+        cls, id_: int, table: Table, update_values: Mapping, extra_filters: Filters = None
+    ) -> 'UpdateQuery':
+        """Create update query with id filter"""
+        extra_filters = extra_filters or []
+        return UpdateQuery(table, update_values, [table.c.id == id_, *extra_filters])
 
 
 @dataclass

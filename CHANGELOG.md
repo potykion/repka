@@ -2,6 +2,12 @@
 
 # Changelog
 
+## Unreleased - 2020-08-21
+
+### Added
+
+- `repka.repositories.base.AsyncBaseRepo.update_values` - perform sql-like update (#46 by @potykion)
+
 ## 2.0.2 - 2020-08-16
 
 ### Changed
