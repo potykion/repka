@@ -37,6 +37,8 @@ Created = bool
 
 
 class IdModel(BaseModel):
+    """Pydantic model with optional id field"""
+
     id: Optional[int]
 
 
@@ -46,35 +48,35 @@ GenericIdModel = TypeVar("GenericIdModel", bound=IdModel)
 class AsyncQueryExecutor:
     @abstractmethod
     async def fetch_one(self, query: SqlAlchemyQuery) -> Optional[Mapping]:
-        ...
+        """Execute SELECT query and return first result row"""
 
     @abstractmethod
     async def fetch_all(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
-        ...
+        """Execute SELECT query and return all result rows"""
 
     @abstractmethod
     async def fetch_val(self, query: SqlAlchemyQuery) -> Any:
-        ...
+        """Execute SELECT query and return first column of first result row"""
 
     @abstractmethod
     async def insert(self, query: SqlAlchemyQuery) -> Mapping:
-        ...
+        """Execute INSERT query and return returning columns"""
 
     @abstractmethod
     async def insert_many(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
-        ...
+        """Execute INSERT query and return list of returning columns"""
 
     @abstractmethod
     async def update(self, query: SqlAlchemyQuery) -> None:
-        ...
+        """Execute UPDATE query"""
 
     @abstractmethod
     async def delete(self, query: SqlAlchemyQuery) -> None:
-        ...
+        """Execute DELETE query"""
 
     @abstractmethod
     def execute_in_transaction(self) -> Any:
-        ...
+        """Execute queries in transaction"""
 
 
 class AsyncBaseRepo(Generic[GenericIdModel], ABC):
@@ -89,7 +91,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     @property
     @abstractmethod
     def table(self) -> Table:
-        pass
+        """SQLAlchemy table definition"""
 
     @property
     def ignore_default(self) -> Sequence[str]:
@@ -101,16 +103,18 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         return []
 
     def serialize(self, entity: GenericIdModel) -> Dict:
+        """Convert pydantic model to dict"""
         return model_to_primitive(entity, without_id=True)
 
     def deserialize(self, **kwargs: Any) -> GenericIdModel:
+        """Create pydantic model from kwargs"""
         entity_type = self._get_generic_type()
         return entity_type(**kwargs)
 
     @property
     @abstractmethod
     def query_executor(self) -> AsyncQueryExecutor:
-        ...
+        """repka.repositories.base.AsyncQueryExecutor instance"""
 
     # ==============
     # SELECT METHODS
@@ -119,16 +123,19 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     async def first(
         self, *filters: BinaryExpression, orders: Columns = None
     ) -> Optional[GenericIdModel]:
+        """Get first entity from DB matching filters and orders"""
         query = SelectQuery(self.table, filters, orders or [])()
         row = await self.query_executor.fetch_one(query)
         return self.deserialize(**row) if row else None
 
     async def get_by_id(self, entity_id: int) -> Optional[GenericIdModel]:
+        """Get entity from DB with id = {entity_id}"""
         return await self.first(self.table.c.id == entity_id)
 
     async def get_or_create(
         self, filters: Filters = None, defaults: Dict = None
     ) -> Tuple[GenericIdModel, Created]:
+        """Get first entity from DB  matching filters or create it"""
         entity = await self.first(*(filters or []))
         if entity:
             return entity, False
@@ -140,22 +147,19 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     async def get_all(
         self, filters: Filters = None, orders: Columns = None
     ) -> List[GenericIdModel]:
+        """Get all entities from DB matching filters and orders"""
         query = SelectQuery(self.table, filters or [], orders or [])()
         rows = await self.query_executor.fetch_all(query)
         return [cast(GenericIdModel, self.deserialize(**row)) for row in rows]
 
     async def get_by_ids(self, entity_ids: Sequence[int]) -> List[GenericIdModel]:
+        """Get all entities from DB with id from {entity_ids}"""
         return await self.get_all(filters=[self.table.c.id.in_(entity_ids)])
 
     async def get_all_ids(
         self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
     ) -> Sequence[int]:
-        """
-        Same as get_all() but returns only ids.
-        :param filters: List of conditions
-        :param orders: List of orders
-        :return: List of ids
-        """
+        """Same as get_all() but returns only ids."""
         query = SelectQuery(
             self.table, filters or [], orders or [], select_columns=[self.table.c.id]
         )()
@@ -163,6 +167,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         return [row["id"] for row in rows]
 
     async def exists(self, *filters: BinaryExpression) -> bool:
+        """Check entity matching filters exists in DB"""
         query = SelectQuery(
             self.table, filters, select_columns=[sa.func.count(self.table.c.id)]
         )()
@@ -174,9 +179,11 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
 
     async def insert(self, entity: GenericIdModel) -> GenericIdModel:
+        """Insert entity to DB"""
         return await InsertImpl(self).insert(entity)
 
     async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
+        """Insert multiple entities to DB"""
         return await InsertManyImpl(self).insert_many(entities)
 
     # ==============
@@ -184,6 +191,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
 
     async def update(self, entity: GenericIdModel) -> GenericIdModel:
+        """Update entity in DB"""
         assert entity.id
         update_values = self.serialize(entity)
         query = UpdateQuery.by_id(entity.id, self.table, update_values)()
@@ -193,6 +201,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     async def update_partial(
         self, entity: GenericIdModel, **updated_values: Any
     ) -> GenericIdModel:
+        """Update particular entity fields in DB"""
         assert entity.id
 
         for field, value in updated_values.items():
@@ -208,6 +217,8 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
     async def update_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
         """
+        Update multiple entities in DB
+
         No way to update many in single query:
         https://github.com/aio-libs/aiopg/issues/546
 
@@ -222,7 +233,7 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         return entities
 
     async def update_values(self, values: dict, filters: Filters) -> None:
-        """Perform sql-like update"""
+        """Update particular entity fields for entities matching filters (perform SQL UPDATE)"""
         query = UpdateQuery(self.table, values, filters)()
         await self.query_executor.update(query)
 
@@ -231,13 +242,16 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
 
     async def delete(self, *filters: Optional[BinaryExpression]) -> None:
+        """Delete entities matching filters from DB"""
         query = DeleteQuery(self.table, filters)()
         await self.query_executor.delete(query)
 
     async def delete_by_id(self, entity_id: int) -> None:
+        """Delete entity by id from DB"""
         return await self.delete(self.table.c.id == entity_id)
 
     async def delete_by_ids(self, entity_ids: Sequence[int]) -> None:
+        """Delete multiple entities from DB with id in {entity_ids}"""
         return await self.delete(self.table.c.id.in_(entity_ids))
 
     # ==============
@@ -245,6 +259,16 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     # ==============
 
     def execute_in_transaction(self) -> Any:
+        """
+        Execute queries in transaction
+
+        Usage:
+
+        async with repo.execute_in_transaction():
+            repo.delete(...)
+            repo.insert(...)
+            ...
+        """
         return self.query_executor.execute_in_transaction()
 
     # ==============
@@ -268,9 +292,12 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
 
 @dataclass
 class InsertImpl:
+    """Entity DB insertion implementation"""
+
     repo: AsyncBaseRepo
 
     async def insert(self, entity: GenericIdModel) -> GenericIdModel:
+        """Perform entity insertion"""
         query = InsertQuery(
             self.repo.table, self._serialize_for_insertion(entity), self.insert_returning_columns
         )()
@@ -279,28 +306,35 @@ class InsertImpl:
 
         return self._set_ignored_fields(entity, row)
 
-    @property
-    def insert_returning_columns(self) -> Columns:
-        return (
-            self.repo.table.c.id,
-            *(getattr(self.repo.table.c, col) for col in self.repo.ignore_default),
-        )
-
     def _serialize_for_insertion(self, entity: GenericIdModel) -> Dict[str, Any]:
-        # key should be removed manually (not in .serialize) due to compatibility
+        """
+        Remove ignored fields from serialized entity
+
+        Field should be removed here (not in .serialize) due to compatibility
+        """
         return {
             key: value
             for key, value in self.repo.serialize(entity).items()
             if key not in self._get_ignored_fields(entity)
         }
 
+    @property
+    def insert_returning_columns(self) -> Columns:
+        """All columns except columns from {AsyncBaseRepo.ignore_default}"""
+        return (
+            self.repo.table.c.id,
+            *(getattr(self.repo.table.c, col) for col in self.repo.ignore_default),
+        )
+
     def _set_ignored_fields(self, entity: GenericIdModel, row: Mapping) -> GenericIdModel:
+        """Set returned from db values to entity"""
         entity.id = row["id"]
         for col in self._get_ignored_fields(entity):
             setattr(entity, col, row[col])
         return entity
 
     def _get_ignored_fields(self, entity: GenericIdModel) -> Set[str]:
+        """Get entity fields which values equal to default value"""
         return {
             field
             for field in self.repo.ignore_default
@@ -309,10 +343,13 @@ class InsertImpl:
 
 
 class InsertManyImpl(InsertImpl):
+    """Multiple entities DB insertion implementation"""
+
     async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
         """
         Inserts many entities with a single query.
-        raises ValueError if some entities' fields from self.ignore_default have default values
+
+        :raises ValueError if some entities' fields from self.ignore_default have default values
         while other fields have non-default values if
         """
         if not entities:
@@ -334,6 +371,7 @@ class InsertManyImpl(InsertImpl):
         return entities
 
     def _check_server_defaults(self, entities: Sequence[GenericIdModel]) -> None:
+        """Check all entity values either equal to default values or not"""
         server_default_fields = [
             col.key
             for col in self.repo.table.c
