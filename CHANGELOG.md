@@ -7,7 +7,7 @@
 ### Added
 
 - `repka.repositories.base.AsyncBaseRepo.update_values` - perform sql-like update (#46 by @potykion)
-- `repka.repositories.base`, `repka.repositories.queries` documentation
+- `repka.repositories.base`, `repka.repositories.queries` documentation (#47 by @potykion)
 
 ## 2.0.2 - 2020-08-16
 
