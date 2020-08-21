@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Sequence, Union, Mapping, cast
+from typing import Sequence, Union, Mapping
 
 import sqlalchemy as sa
 from sqlalchemy import Table
@@ -30,7 +30,7 @@ class SelectQuery:
         return query
 
     @staticmethod
-    def apply_filters(query: ClauseElement, filters: Sequence[BinaryExpression]) -> ClauseElement:
+    def apply_filters(query: ClauseElement, filters: Filters) -> ClauseElement:
         return reduce(lambda query_, filter_: query_.where(filter_), filters, query)
 
     @staticmethod
@@ -97,11 +97,12 @@ class DeleteQuery:
             )
 
         # None passed => delete all table rows
+        filters: Filters
         if self.filters[0] is None:
-            filters: Filters = tuple()
+            filters = tuple()
         else:
             filters = self.filters
 
         query = self.table.delete()
-        query = SelectQuery.apply_filters(query, cast(Filters, filters))
+        query = SelectQuery.apply_filters(query, filters)
         return query

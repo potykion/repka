@@ -76,16 +76,3 @@ class FakeRepo(AsyncBaseRepo[GenericIdModel], ABC):
     @asynccontextmanager
     def execute_in_transaction(self) -> Any:
         yield None
-
-
-# class deleteme:
-#     ...
-#
-# class InheritedFakeRepo(FakeRepo[deleteme]):
-#     pass
-#
-#
-# if __name__ == '__main__':
-#     repo = InheritedFakeRepo()
-#     type_ = repo._get_generic_type()
-#     s = "As"
