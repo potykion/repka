@@ -14,8 +14,7 @@ from databases import Database
 from pydantic import validator
 
 from repka.api import IdModel
-from repka.repositories.databases_ import DatabasesRepository
-
+from repka.repositories.databases_ import DatabasesRepository, DatabasesQueryExecutor
 
 # Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
 pytestmark = pytest.mark.asyncio
@@ -105,6 +104,11 @@ async def conn(db_url: str) -> AsyncGenerator[Database, None]:
 
     async with Database(db_url) as conn_:
         yield conn_
+
+
+@pytest.fixture()
+async def query_executor(conn: Database) -> DatabasesQueryExecutor:
+    return DatabasesQueryExecutor(conn)
 
 
 @pytest.fixture()
@@ -476,3 +480,28 @@ async def test_insert_many_raises_value_error_if_inconsistent_server_default_fie
                 DefaultFieldsModel(seq_field=7),
             ]
         )
+
+@pytest.mark.skip
+async def test_fetch_one_works_ok_with_sa_params(query_executor: DatabasesQueryExecutor) -> None:
+    query = sa.text("select :aue as col")
+    res = await query_executor.fetch_one(query, aue=123)
+
+    assert res["col"] == 123
+
+
+@pytest.mark.skip
+async def test_fetch_all_works_ok_with_sa_params(query_executor: DatabasesQueryExecutor) -> None:
+    query = sa.text("select :aue as col")
+    res = list(await query_executor.fetch_all(query, aue=123))
+
+    assert res[0]["col"] == 123
+
+
+@pytest.mark.skip
+async def test_fetch_val_works_ok_with_sa_params(query_executor: DatabasesQueryExecutor) -> None:
+    query = sa.text("select :aue as col")
+
+    res = await query_executor.fetch_val(query, aue=123)
+
+    assert res == 123
+
