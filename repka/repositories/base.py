@@ -47,31 +47,31 @@ GenericIdModel = TypeVar("GenericIdModel", bound=IdModel)
 
 class AsyncQueryExecutor:
     @abstractmethod
-    async def fetch_one(self, query: SqlAlchemyQuery) -> Optional[Mapping]:
+    async def fetch_one(self, query: SqlAlchemyQuery, **sa_params: Any) -> Optional[Mapping]:
         """Execute SELECT query and return first result row"""
 
     @abstractmethod
-    async def fetch_all(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
+    async def fetch_all(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
         """Execute SELECT query and return all result rows"""
 
     @abstractmethod
-    async def fetch_val(self, query: SqlAlchemyQuery) -> Any:
+    async def fetch_val(self, query: SqlAlchemyQuery, **sa_params: Any) -> Any:
         """Execute SELECT query and return first column of first result row"""
 
     @abstractmethod
-    async def insert(self, query: SqlAlchemyQuery) -> Mapping:
+    async def insert(self, query: SqlAlchemyQuery, **sa_params: Any) -> Mapping:
         """Execute INSERT query and return returning columns"""
 
     @abstractmethod
-    async def insert_many(self, query: SqlAlchemyQuery) -> Sequence[Mapping]:
+    async def insert_many(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
         """Execute INSERT query and return list of returning columns"""
 
     @abstractmethod
-    async def update(self, query: SqlAlchemyQuery) -> None:
+    async def update(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
         """Execute UPDATE query"""
 
     @abstractmethod
-    async def delete(self, query: SqlAlchemyQuery) -> None:
+    async def delete(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
         """Execute DELETE query"""
 
     @abstractmethod
