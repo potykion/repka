@@ -42,25 +42,25 @@ class DatabasesQueryExecutor(AsyncQueryExecutor):
         self.connection = connection
 
     async def fetch_one(self, query: SqlAlchemyQuery, **sa_params: Any) -> Optional[Mapping]:
-        return await self.connection.fetch_one(query)
+        return await self.connection.fetch_one(query, sa_params)
 
     async def fetch_all(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
-        return await self.connection.fetch_all(query)
+        return await self.connection.fetch_all(query, sa_params)
 
     async def fetch_val(self, query: SqlAlchemyQuery, **sa_params: Any) -> Any:
-        return await self.connection.fetch_val(query)
+        return await self.connection.fetch_val(query, sa_params)
 
     async def insert(self, query: SqlAlchemyQuery, **sa_params: Any) -> Mapping:
-        return cast(Mapping, await self.connection.fetch_one(query))
+        return cast(Mapping, await self.connection.fetch_one(query, sa_params))
 
     async def insert_many(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
-        return await self.connection.fetch_all(query)
+        return await self.connection.fetch_all(query, sa_params)
 
     async def update(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
-        await self.connection.execute(query)
+        await self.connection.execute(query, sa_params)
 
     async def delete(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
-        await self.connection.execute(query)
+        await self.connection.execute(query, sa_params)
 
     def execute_in_transaction(self) -> Transaction:
         return self.connection.transaction()

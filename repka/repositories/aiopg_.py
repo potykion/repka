@@ -37,29 +37,29 @@ class AiopgQueryExecutor(AsyncQueryExecutor):
         self._connection = connection
 
     async def fetch_one(self, query: SqlAlchemyQuery, **sa_params: Any) -> Optional[Mapping]:
-        rows: ResultProxy = await self._connection.execute(query)
+        rows: ResultProxy = await self._connection.execute(query, **sa_params)
         row: RowProxy = await rows.first()
         return row
 
     async def fetch_all(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
-        return await self._connection.execute(query)
+        return await self._connection.execute(query, **sa_params)
 
     async def fetch_val(self, query: SqlAlchemyQuery, **sa_params: Any) -> Any:
-        return await self._connection.scalar(query)
+        return await self._connection.scalar(query, **sa_params)
 
     async def insert(self, query: SqlAlchemyQuery, **sa_params: Any) -> Mapping:
-        rows = await self._connection.execute(query)
+        rows = await self._connection.execute(query, **sa_params)
         row = await rows.first()
         return row
 
     async def insert_many(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
-        return await self._connection.execute(query)
+        return await self._connection.execute(query, **sa_params)
 
     async def update(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
-        await self._connection.execute(query)
+        await self._connection.execute(query, **sa_params)
 
     async def delete(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
-        await self._connection.execute(query)
+        await self._connection.execute(query, **sa_params)
 
     def execute_in_transaction(self) -> SATransaction:
         return self._connection.begin()
