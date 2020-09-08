@@ -109,6 +109,7 @@ async def conn(db_url: str) -> SAConnection:
 async def query_executor(conn: SAConnection) -> AiopgQueryExecutor:
     return AiopgQueryExecutor(conn)
 
+
 @pytest.fixture()
 async def repo(conn: SAConnection) -> TransactionRepo:
     return TransactionRepo(conn)
@@ -492,6 +493,7 @@ async def test_fetch_one_works_ok_with_sa_params(query_executor: AiopgQueryExecu
     query = sa.text("select :aue as col")
     res = await query_executor.fetch_one(query, aue=123)
 
+    assert res is not None
     assert res["col"] == 123
 
 

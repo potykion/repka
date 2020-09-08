@@ -4,7 +4,6 @@ from typing import Union, Mapping, Any, Sequence, Optional, cast, Dict
 
 from databases import Database
 from databases.core import Transaction
-from sqlalchemy.sql.elements import TextClause
 
 from repka.repositories.base import AsyncBaseRepo, GenericIdModel, AsyncQueryExecutor
 from repka.repositories.queries import SqlAlchemyQuery

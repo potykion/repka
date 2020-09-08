@@ -481,11 +481,13 @@ async def test_insert_many_raises_value_error_if_inconsistent_server_default_fie
             ]
         )
 
+
 @pytest.mark.skip
 async def test_fetch_one_works_ok_with_sa_params(query_executor: DatabasesQueryExecutor) -> None:
     query = sa.text("select :aue as col")
     res = await query_executor.fetch_one(query, aue=123)
 
+    assert res is not None
     assert res["col"] == 123
 
 
@@ -504,4 +506,3 @@ async def test_fetch_val_works_ok_with_sa_params(query_executor: DatabasesQueryE
     res = await query_executor.fetch_val(query, aue=123)
 
     assert res == 123
-
