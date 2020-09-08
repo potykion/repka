@@ -12,6 +12,8 @@ from pydantic import validator
 from repka.api import BaseRepository, IdModel
 
 # Enable async tests (https://github.com/pytest-dev/pytest-asyncio#pytestmarkasyncio)
+from repka.repositories.aiopg_ import AiopgQueryExecutor
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -101,6 +103,11 @@ async def conn(db_url: str) -> SAConnection:
     async with create_engine(db_url) as engine:
         async with engine.acquire() as conn_:
             yield conn_
+
+
+@pytest.fixture()
+async def query_executor(conn: SAConnection) -> AiopgQueryExecutor:
+    return AiopgQueryExecutor(conn)
 
 
 @pytest.fixture()
@@ -480,3 +487,26 @@ async def test_update_values(repo: TransactionRepo) -> None:
     await repo.update_values({"price": 300}, filters=[repo.table.c.price == 100])
 
     assert {t.price for t in await repo.get_all()} == {300, 200}
+
+
+async def test_fetch_one_works_ok_with_sa_params(query_executor: AiopgQueryExecutor) -> None:
+    query = sa.text("select :aue as col")
+    res = await query_executor.fetch_one(query, aue=123)
+
+    assert res is not None
+    assert res["col"] == 123
+
+
+async def test_fetch_all_works_ok_with_sa_params(query_executor: AiopgQueryExecutor) -> None:
+    query = sa.text("select :aue as col")
+    res = list(await query_executor.fetch_all(query, aue=123))
+
+    assert res[0]["col"] == 123
+
+
+async def test_fetch_val_works_ok_with_sa_params(query_executor: AiopgQueryExecutor) -> None:
+    query = sa.text("select :aue as col")
+
+    res = await query_executor.fetch_val(query, aue=123)
+
+    assert res == 123
