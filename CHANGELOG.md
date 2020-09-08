@@ -2,6 +2,12 @@
 
 # Changelog
 
+## Unreleased - 2020-09-08
+
+### Added
+
+- `repka.repositories.base.AsyncBaseRepo` - params for raw query support (#48 by @Paul-Ilyin)
+
 ## 2.1.0 - 2020-08-21
 
 ### Added
