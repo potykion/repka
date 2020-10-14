@@ -13,7 +13,7 @@
 
 - **Breaking change!** removed [databases](https://github.com/encode/databases) support (#54 by @Paul-Ilyin)
 
-##  - 2020-09-08
+## 2.2.0 - 2020-09-08
 
 ### Added
 
