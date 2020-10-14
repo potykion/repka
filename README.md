@@ -142,9 +142,6 @@ async with create_async_db_connection(db_url) as conn:
 
 Following repositories have same api as `AiopgRepository` (select methods, insert methods, etc.)
 
-- `repka.api.DatabasesRepository` - repository that uses [databases](https://www.encode.io/databases/) lib as query executor
-    - Pass `databases.Database` to the constructor to this kind of repo    
-
 - `repka.api.FakeRepo` - repository that uses lists instead of database tables, can be used as mock
     - This repository is implemented partially, because implementing sqlalchemy features (like filters or orders) is hard and pointless for python lists 
 
