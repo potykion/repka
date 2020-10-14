@@ -1,10 +1,9 @@
 # repka
 
-![ci](https://travis-ci.org/potykion/repka.svg?branch=master)
+![[PyPI](https://pypi.org/project/repka/)](https://img.shields.io/pypi/v/repka)
+![[CI](https://travis-ci.org/github/potykion/repka)](https://travis-ci.org/potykion/repka.svg?branch=master) 
 
 Repository pattern implementation - isolate db manipulation from domain models
-
-Version: **2.2.0**
 
 ## Installation
 
