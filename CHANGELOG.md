@@ -2,6 +2,13 @@
 
 # Changelog
 
+## [Unreleased]
+### Changed
+- `repka.repositories.base.AsyncQueryExecutor.fetch_all` - now returns AsyncIterator (#54 by @Paul-Ilyin)
+- `repka.repositories.base.AsyncQueryExecutor.insert_many` - now returns AsyncIterator (#54 by @Paul-Ilyin)
+### Removed
+- **Breaking change!** removed [databases](https://github.com/encode/databases) support (#54 by @Paul-Ilyin)
+
 ## 2.2.0 - 2020-09-08
 
 ### Added

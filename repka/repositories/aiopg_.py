@@ -1,6 +1,6 @@
 from abc import ABC
 from contextvars import ContextVar
-from typing import Union, Optional, Mapping, Sequence, Any
+from typing import Union, Optional, Mapping, Any, AsyncIterator
 
 from aiopg.sa import SAConnection
 from aiopg.sa.result import RowProxy, ResultProxy
@@ -41,7 +41,7 @@ class AiopgQueryExecutor(AsyncQueryExecutor):
         row: RowProxy = await rows.first()
         return row
 
-    async def fetch_all(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
+    async def fetch_all(self, query: SqlAlchemyQuery, **sa_params: Any) -> AsyncIterator[Mapping]:
         return await self._connection.execute(query, **sa_params)
 
     async def fetch_val(self, query: SqlAlchemyQuery, **sa_params: Any) -> Any:
@@ -52,11 +52,13 @@ class AiopgQueryExecutor(AsyncQueryExecutor):
         row = await rows.first()
         return row
 
-    async def insert_many(self, query: SqlAlchemyQuery, **sa_params: Any) -> Sequence[Mapping]:
+    async def insert_many(
+        self, query: SqlAlchemyQuery, **sa_params: Any
+    ) -> AsyncIterator[Mapping]:
         return await self._connection.execute(query, **sa_params)
 
     async def update(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
-        await self._connection.execute(query, **sa_params)
+        return await self._connection.execute(query, **sa_params)
 
     async def delete(self, query: SqlAlchemyQuery, **sa_params: Any) -> None:
         await self._connection.execute(query, **sa_params)

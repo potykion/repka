@@ -11,7 +11,7 @@ branches:
 before_install:
   - pip install poetry
 install:
-  - poetry install -E databases
+  - poetry install
 
 # install psql, create db and set db url
 services:

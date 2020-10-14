@@ -499,7 +499,7 @@ async def test_fetch_one_works_ok_with_sa_params(query_executor: AiopgQueryExecu
 
 async def test_fetch_all_works_ok_with_sa_params(query_executor: AiopgQueryExecutor) -> None:
     query = sa.text("select :aue as col")
-    res = list(await query_executor.fetch_all(query, aue=123))
+    res = [e async for e in await query_executor.fetch_all(query, aue=123)]
 
     assert res[0]["col"] == 123
 
