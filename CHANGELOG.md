@@ -2,7 +2,7 @@
 
 # Changelog
 
-## Unreleased
+## 3.1.0
 
 ### Added
 - `repka.repositories.base.AsyncBaseRepo.get_all_aiter()` which is the same as `get_all()` method, but it returns an async iterator (#55 by @Paul-Ilyin)
