@@ -199,7 +199,9 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         """Insert multiple entities to DB"""
         return await InsertManyImpl(self).insert_many(entities)
 
-    async def insert_many_aiter(self, entities: List[GenericIdModel]) -> AsyncIterator[GenericIdModel]:
+    async def insert_many_aiter(
+        self, entities: List[GenericIdModel]
+    ) -> AsyncIterator[GenericIdModel]:
         """Insert multiple entities to DB. Returns an async iterable with inserted entities"""
         return await InsertManyImpl(self).insert_many_aiter(entities)
 
