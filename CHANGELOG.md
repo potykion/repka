@@ -2,6 +2,13 @@
 
 # Changelog
 
+## Unreleased
+
+### Added
+- `repka.repositories.base.AsyncBaseRepo.get_all_aiter()` which is the same as `get_all()` method, but it returns an async iterator (#55 by @Paul-Ilyin)
+- `repka.repositories.base.AsyncBaseRepo.get_by_ids_aiter()` which is the same as `get_by_ids()` method, but it returns an async iterator (#55 by @Paul-Ilyin)
+- `repka.repositories.base.AsyncBaseRepo.insert_many_aiter()` method which is the same as `insert_many()` method, but it returns an async iterator (#55 by @Paul-Ilyin)
+
 ## 3.0.0 - 2020-10-14
 
 ### Changed

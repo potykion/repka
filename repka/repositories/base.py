@@ -32,7 +32,7 @@ from repka.repositories.queries import (
     SqlAlchemyQuery,
     InsertManyQuery,
 )
-from repka.utils import model_to_primitive, is_field_equal_to_default, mixed_zip
+from repka.utils import model_to_primitive, is_field_equal_to_default, mixed_zip, aiter_to_list
 
 Created = bool
 
@@ -151,13 +151,23 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         self, filters: Filters = None, orders: Columns = None
     ) -> List[GenericIdModel]:
         """Get all entities from DB matching filters and orders"""
+        return await aiter_to_list(await self.get_all_aiter(filters, orders))
+
+    async def get_all_aiter(
+        self, filters: Filters = None, orders: Columns = None
+    ) -> AsyncIterator[GenericIdModel]:
+        """Get all entities from DB matching filters and orders as an async iterator"""
         query = SelectQuery(self.table, filters or [], orders or [])()
         rows = await self.query_executor.fetch_all(query)
-        return [cast(GenericIdModel, self.deserialize(**row)) async for row in rows]
+        return self._rows_to_entities(rows)
 
     async def get_by_ids(self, entity_ids: Sequence[int]) -> List[GenericIdModel]:
         """Get all entities from DB with id from {entity_ids}"""
-        return await self.get_all(filters=[self.table.c.id.in_(entity_ids)])
+        return await aiter_to_list(await self.get_by_ids_aiter(entity_ids))
+
+    async def get_by_ids_aiter(self, entity_ids: Sequence[int]) -> AsyncIterator[GenericIdModel]:
+        """Get all entities from DB with id from {entity_ids} as an async iterator"""
+        return await self.get_all_aiter(filters=[self.table.c.id.in_(entity_ids)])
 
     async def get_all_ids(
         self, filters: Sequence[BinaryExpression] = None, orders: Columns = None
@@ -188,6 +198,10 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
     async def insert_many(self, entities: List[GenericIdModel]) -> List[GenericIdModel]:
         """Insert multiple entities to DB"""
         return await InsertManyImpl(self).insert_many(entities)
+
+    async def insert_many_aiter(self, entities: List[GenericIdModel]) -> AsyncIterator[GenericIdModel]:
+        """Insert multiple entities to DB. Returns an async iterable with inserted entities"""
+        return await InsertManyImpl(self).insert_many_aiter(entities)
 
     # ==============
     # UPDATE METHODS
@@ -292,6 +306,15 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
             typing_inspect.get_args(typing_inspect.get_generic_bases(self)[-1])[0],
         )
 
+    async def _rows_to_entities(
+        self, rows: AsyncIterator[Mapping]
+    ) -> AsyncIterator[GenericIdModel]:
+        """
+        Converts an async iterator of DB rows to an async iterator of GenericIdModel
+        """
+        async for row in rows:
+            yield cast(GenericIdModel, self.deserialize(**row))
+
 
 @dataclass
 class InsertImpl:
@@ -353,10 +376,20 @@ class InsertManyImpl(InsertImpl):
         Inserts many entities with a single query.
 
         :raises ValueError if some entities' fields from self.ignore_default have default values
-        while other fields have non-default values if
+        while other fields have non-default values
         """
+        return await aiter_to_list(await self.insert_many_aiter(entities))
+
+    async def insert_many_aiter(
+        self, entities: List[GenericIdModel]
+    ) -> AsyncIterator[GenericIdModel]:
         if not entities:
-            return entities
+
+            async def _empty_aiter() -> AsyncIterator[GenericIdModel]:
+                return
+                yield
+
+            return _empty_aiter()
 
         self._check_server_defaults(entities)
 
@@ -368,10 +401,7 @@ class InsertManyImpl(InsertImpl):
 
         rows = await self.repo.query_executor.insert_many(query)
 
-        async for entity, row in mixed_zip(entities, rows):  # type: ignore
-            self._set_ignored_fields(entity, row)
-
-        return entities
+        return self._updated_entities_aiter(entities, rows)
 
     def _check_server_defaults(self, entities: Sequence[GenericIdModel]) -> None:
         """Check all entity values either equal to default values or not"""
@@ -391,3 +421,12 @@ class InsertManyImpl(InsertImpl):
                     "All fields from ignore default should either be equal to default values or not be "
                     f"equal. Got inconsistency with {server_default_field} field"
                 )
+
+    async def _updated_entities_aiter(
+        self, entities: List[GenericIdModel], rows: AsyncIterator[Mapping]
+    ) -> AsyncIterator[GenericIdModel]:
+        """
+        Returns an async iterator which yielding entities with fields updated by passed rows
+        """
+        async for entity, row in mixed_zip(entities, rows):  # type: ignore
+            yield self._set_ignored_fields(entity, row)

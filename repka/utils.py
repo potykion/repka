@@ -1,6 +1,6 @@
 import json
 from contextlib import asynccontextmanager
-from typing import Sequence, Dict, Set, Union, TypeVar, Tuple, AsyncIterator, Iterator
+from typing import Sequence, Dict, Set, Union, TypeVar, Tuple, AsyncIterator, Iterator, List
 
 from aiopg.sa import SAConnection, create_engine
 from pydantic import BaseModel
@@ -61,3 +61,8 @@ async def mixed_zip(first: Iterator[T], second: AsyncIterator[F]) -> AsyncIterat
         except StopIteration:
             break
         yield f, s
+
+
+async def aiter_to_list(aiter: AsyncIterator[T]) -> List[T]:
+    """Converts an async iterator of entities to list"""
+    return [entity async for entity in aiter]
