@@ -339,6 +339,16 @@ async def test_insert_many_in_transaction_rollback_on_error(conn: SAConnection) 
     assert len(await repo.get_all()) == 0
 
 
+async def test_execute_in_transaction(conn: SAConnection) -> None:
+    repo = UnionModelRepo(conn)
+
+    async with repo.execute_in_transaction():
+        await repo.insert(UnionModel(int_or_str=1))
+        await repo.insert(UnionModel(int_or_str=1))
+
+    assert len(await repo.get_all()) == 2
+
+
 async def test_error_in_transaction_inside_transaction_rollback(conn: SAConnection) -> None:
     repo = UnionModelRepo(conn)
 
