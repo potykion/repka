@@ -2,7 +2,7 @@
 
 # Changelog
 
-## Unreleased
+## 3.1.1
 
 ### Changed
 - repka now supports 3.8 and 3.9 python versions (#59 by @Paul-Ilyin)
