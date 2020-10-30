@@ -2,6 +2,12 @@
 
 # Changelog
 
+## Unreleased
+
+### Changed
+- repka now supports 3.8 and 3.9 python versions (#59 by @Paul-Ilyin)
+- changed supported pydantic version to >=1,<2 (#59 by @Paul-Ilyin)
+
 ## 3.1.0
 
 ### Added
