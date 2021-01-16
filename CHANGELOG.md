@@ -14,6 +14,8 @@
 - `repka.repositories.base.AsyncBaseRepo.get_all_aiter()` which is the same as `get_all()` method, but it returns an async iterator (#55 by @Paul-Ilyin)
 - `repka.repositories.base.AsyncBaseRepo.get_by_ids_aiter()` which is the same as `get_by_ids()` method, but it returns an async iterator (#55 by @Paul-Ilyin)
 - `repka.repositories.base.AsyncBaseRepo.insert_many_aiter()` method which is the same as `insert_many()` method, but it returns an async iterator (#55 by @Paul-Ilyin)
+- `rerepka.repositories.base.update_or_insert_many_by_field` update or insert entities depending on field value (#63 by kosyan62)
+- `rerepka.repositories.base.update_or_insert_first` same as `update_or_insert_many_by_field` but for one entity (#63 by kosyan62)
 
 ## 3.0.0 - 2020-10-14
 

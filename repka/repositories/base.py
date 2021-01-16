@@ -256,6 +256,43 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         query = UpdateQuery(self.table, values, filters)()
         await self.query_executor.update(query)
 
+    async def update_or_insert_first(self, entity: GenericIdModel, field: str) -> GenericIdModel:
+        """Update one entity with field or add it to DB"""
+        value = getattr(entity, field)
+        entity_with_field = await self.get_all(filters=[self.table.c[field] == value])
+
+        async with self.execute_in_transaction():
+            if entity_with_field:
+                entity.id = entity_with_field[0].id
+                entity = await self.update(entity)
+            else:
+                entity = await self.insert(entity)
+        return entity
+
+    async def update_or_insert_many_by_field(
+        self, entities: Sequence[GenericIdModel], field: str
+    ) -> Sequence[GenericIdModel]:
+        """Update all entities with field and add entities without it to DB"""
+        values = [getattr(e, field) for e in entities]
+        entities_with_field = await self.get_all(filters=[self.table.c[field].in_(values)])
+        field_entities = {getattr(e, field): e for e in entities_with_field}
+
+        async with self.execute_in_transaction():
+            entities_to_insert, entities_to_update = [], []
+            for e in entities:
+                if getattr(e, field) in field_entities:
+                    entities_to_update.append(e)
+                else:
+                    entities_to_insert.append(e)
+
+            entities_to_insert = await self.insert_many(entities_to_insert)
+
+            for e in entities_to_update:
+                e.id = field_entities[getattr(e, field)].id
+            entities_to_update = await self.update_many(entities_to_update)
+
+        return [*entities_to_insert, *entities_to_update]
+
     # ==============
     # DELETE METHODS
     # ==============
