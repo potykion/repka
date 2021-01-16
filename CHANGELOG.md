@@ -8,7 +8,7 @@
 
 - `repka.repositories.base.AsyncBaseRepo.update_or_insert_many_by_field` - update or insert entities depending on field
   value (#63 by @kosyan62)
-- `repka.repositories.base.AsyncBaseRepo.update_or_insert_first` - same as `update_or_insert_many_by_field` but for one
+- `repka.repositories.base.AsyncBaseRepo.update_or_insert_first_by_field` - same as `update_or_insert_many_by_field` but for one
   entity (#58 by @kosyan62)
 
 ### Changed
