@@ -542,8 +542,8 @@ async def test_update_or_insert_many_by_field(repo: TransactionRepo) -> None:
 async def test_update_or_insert_first(repo: TransactionRepo) -> None:
     await repo.insert(Transaction(price=100, date=dt.date(2020, 1, 1)))
 
-    await repo.update_or_insert_first(Transaction(price=200, date=dt.date(2020, 1, 1)), "date")
-    await repo.update_or_insert_first(Transaction(price=300, date=dt.date(2021, 2, 2)), "date")
+    await repo.update_or_insert_first_by_field(Transaction(price=200, date=dt.date(2020, 1, 1)), "date")
+    await repo.update_or_insert_first_by_field(Transaction(price=300, date=dt.date(2021, 2, 2)), "date")
 
     examples = await repo.get_all()
     assert len(examples) == 2

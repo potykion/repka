@@ -256,17 +256,17 @@ class AsyncBaseRepo(Generic[GenericIdModel], ABC):
         query = UpdateQuery(self.table, values, filters)()
         await self.query_executor.update(query)
 
-    async def update_or_insert_first(self, entity: GenericIdModel, field: str) -> GenericIdModel:
+    async def update_or_insert_first_by_field(self, entity: GenericIdModel, field: str) -> GenericIdModel:
         """Update one entity with field or add it to DB"""
         value = getattr(entity, field)
-        entity_with_field = await self.get_all(filters=[self.table.c[field] == value])
+        entity_with_field = await self.first(self.table.c[field] == value)
 
-        async with self.execute_in_transaction():
-            if entity_with_field:
-                entity.id = entity_with_field[0].id
-                entity = await self.update(entity)
-            else:
-                entity = await self.insert(entity)
+        if entity_with_field:
+            entity.id = entity_with_field.id
+            entity = await self.update(entity)
+        else:
+            entity = await self.insert(entity)
+
         return entity
 
     async def update_or_insert_many_by_field(
@@ -423,7 +423,6 @@ class InsertManyImpl(InsertImpl):
         self, entities: List[GenericIdModel]
     ) -> AsyncIterator[GenericIdModel]:
         if not entities:
-
             async def _empty_aiter() -> AsyncIterator[GenericIdModel]:
                 return
                 yield
